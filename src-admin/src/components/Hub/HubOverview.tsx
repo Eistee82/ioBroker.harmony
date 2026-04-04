@@ -102,6 +102,9 @@ export function HubOverview({
     const [firmwareInfo, setFirmwareInfo] = useState<string | null>(null);
     const [sysInfo, setSysInfo] = useState<Record<string, unknown> | null>(null);
     const [capabilities, setCapabilities] = useState<Record<string, unknown> | null>(null);
+    const [wifiNetworks, setWifiNetworks] = useState<Array<{ssid: string; signal: number; encryption: string[]}>>([]);
+    const [btDevices, setBtDevices] = useState<Record<string, string>>({});
+    const [rfDevices, setRfDevices] = useState<{RFID?: string; EquadID?: string; DeviceCount: number; Devices: Array<{DeviceIndex: string; SkinId: string; EquadID: string}>} | null>(null);
 
     useEffect(() => {
         if (!sendCommand) return;
@@ -110,6 +113,25 @@ export function HubOverview({
         });
         void sendCommand<Record<string, unknown>>('getCapabilities', { hubName }).then((resp) => {
             if (resp.success && resp.data) setCapabilities(resp.data);
+        });
+        void sendCommand<Record<string, unknown>>('getWifiNetworks', { hubName }).then((resp) => {
+            if (resp.success && resp.data) {
+                const networks = Object.values(resp.data as Record<string, any>)
+                    .filter(n => n.ssid)
+                    .sort((a, b) => (b.signal_strength || 0) - (a.signal_strength || 0));
+                setWifiNetworks(networks.map(n => ({ssid: n.ssid, signal: n.signal_strength || 0, encryption: n.encryption || []})));
+            }
+        });
+        void sendCommand<Record<string, string>>('getBluetoothDevices', { hubName }).then((resp) => {
+            if (resp.success && resp.data) {
+                const bt = (resp.data as any)?.btAddresses || resp.data;
+                setBtDevices(bt);
+            }
+        });
+        void sendCommand<Record<string, unknown>>('getRFDevices', { hubName }).then((resp) => {
+            if (resp.success && resp.data) {
+                setRfDevices(resp.data as any);
+            }
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hubName, sendCommand]);
@@ -335,6 +357,7 @@ export function HubOverview({
                                                 value={channelInput}
                                                 onChange={(e): void => setChannelInput(e.target.value)}
                                                 sx={{ flex: 1 }}
+                                                disabled={!runningActivityId || runningActivityId === '-1'}
                                             />
                                             <Button
                                                 variant="contained"
@@ -342,11 +365,16 @@ export function HubOverview({
                                                 onClick={(): void => {
                                                     void sendCommand('changeChannel', { hubName, channel: channelInput });
                                                 }}
-                                                disabled={!channelInput}
+                                                disabled={!channelInput || !runningActivityId || runningActivityId === '-1'}
                                             >
                                                 {I18n.t('go')}
                                             </Button>
                                         </Box>
+                                        {(!runningActivityId || runningActivityId === '-1') && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                {I18n.t('channelRequiresActivity')}
+                                            </Typography>
+                                        )}
                                         <Button
                                             variant="outlined"
                                             fullWidth
@@ -393,6 +421,51 @@ export function HubOverview({
                             </Box>
                         </CardContent>
                     </Card>
+                </Grid2>
+
+                {/* Section 7: WiFi Networks */}
+                <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+                    <SectionCard title={I18n.t('wifiNetworks')}>
+                        {wifiNetworks.length > 0 ? (
+                            wifiNetworks.slice(0, 8).map((net, _i) => (
+                                kvRow(net.ssid, (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Chip label={net.encryption.join(', ') || 'Open'} size="small" variant="outlined" />
+                                        <Typography variant="caption" color="text.secondary">
+                                            {Math.round(net.signal / 2.55)}%
+                                        </Typography>
+                                    </Box>
+                                ))
+                            ))
+                        ) : kvRow('-', '-')}
+                    </SectionCard>
+                </Grid2>
+
+                {/* Section 8: Bluetooth Devices */}
+                <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+                    <SectionCard title={I18n.t('bluetoothDevices')}>
+                        {Object.keys(btDevices).length > 0 ? (
+                            Object.entries(btDevices).map(([id, mac]) => (
+                                kvRow(id, <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{mac}</Typography>)
+                            ))
+                        ) : kvRow(I18n.t('noDevices'), '-')}
+                    </SectionCard>
+                </Grid2>
+
+                {/* Section 9: RF Devices */}
+                <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+                    <SectionCard title={I18n.t('rfDevices')}>
+                        {rfDevices ? (
+                            <>
+                                {kvRow('Hub RFID', rfDevices.RFID || '-')}
+                                {kvRow('Hub EquadID', rfDevices.EquadID || '-')}
+                                {kvRow(I18n.t('devices'), String(rfDevices.DeviceCount || 0))}
+                                {(rfDevices.Devices || []).map((d, i) => (
+                                    kvRow(`Remote ${i + 1}`, `EquadID: ${d.EquadID}`)
+                                ))}
+                            </>
+                        ) : kvRow('-', '-')}
+                    </SectionCard>
                 </Grid2>
             </Grid2>
         </Box>

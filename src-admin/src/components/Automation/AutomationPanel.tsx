@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box, Typography, Card, CardContent, Switch, Slider,
     FormControlLabel, CircularProgress, Alert, IconButton, Tooltip,
+    Divider,
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import TheaterComedyIcon from '@mui/icons-material/TheaterComedy';
 import { I18n } from '@iobroker/adapter-react-v5';
 
 interface AutomationDevice {
@@ -14,6 +16,9 @@ interface AutomationDevice {
     brightness?: number;
     color?: { mode?: string; temp?: number };
     status?: number;
+    friendlyName?: string;
+    deviceType?: string;
+    hasColorTemp?: boolean;
 }
 
 interface AutomationPanelProps {
@@ -29,26 +34,56 @@ export function AutomationPanel({ hubName, sendCommand }: AutomationPanelProps):
     const loadState = useCallback(async () => {
         setLoading(true);
         setError(null);
-        const resp = await sendCommand<Record<string, unknown>>('getAutomationState', { hubName });
+        const [stateResp, configResp] = await Promise.all([
+            sendCommand<Record<string, unknown>>('getAutomationState', { hubName }),
+            sendCommand<Record<string, unknown>>('getAutomationConfig', { hubName }),
+        ]);
         setLoading(false);
-        if (resp.success && resp.data) {
+
+        // Build a name/type lookup from the config response
+        const nameMap: Record<string, { name?: string; type?: string; hasColorTemp?: boolean }> = {};
+        if (configResp.success && configResp.data) {
+            const resource = (configResp.data as Record<string, unknown>).resource as
+                { devices?: Record<string, { name?: string; type?: string; capabilities?: Record<string, unknown> }> } | undefined;
+            if (resource?.devices) {
+                for (const [devId, info] of Object.entries(resource.devices)) {
+                    const hasColorTemp = !!(info.capabilities && ('colorTemp' in info.capabilities || 'ct' in info.capabilities));
+                    nameMap[devId] = { name: info.name, type: info.type, hasColorTemp };
+                }
+            }
+        }
+
+        if (stateResp.success && stateResp.data) {
             // Parse state object into device array
             const devs: AutomationDevice[] = [];
-            const data = resp.data as Record<string, Record<string, unknown>>;
+            const data = stateResp.data as Record<string, Record<string, unknown>>;
             for (const [id, state] of Object.entries(data)) {
                 if (typeof state === 'object' && state !== null) {
+                    const meta = nameMap[id];
+                    let friendlyName = meta?.name;
+                    if (!friendlyName) {
+                        // Derive a readable name from the ID
+                        if (id.startsWith('hueScene-')) {
+                            friendlyName = id.replace(/^hueScene-/, '');
+                        } else {
+                            friendlyName = id.replace(/_/g, ' ').replace(/^hue-/, '');
+                        }
+                    }
                     devs.push({
                         id,
                         on: !!state.on,
                         brightness: typeof state.brightness === 'number' ? state.brightness : undefined,
                         color: state.color as AutomationDevice['color'],
                         status: typeof state.status === 'number' ? state.status : undefined,
+                        friendlyName,
+                        deviceType: meta?.type,
+                        hasColorTemp: meta?.hasColorTemp,
                     });
                 }
             }
             setDevices(devs);
         } else {
-            setError(resp.error || 'Failed to load automation state');
+            setError(stateResp.error || 'Failed to load automation state');
         }
     }, [hubName, sendCommand]);
 
@@ -73,6 +108,9 @@ export function AutomationPanel({ hubName, sendCommand }: AutomationPanelProps):
         );
     }
 
+    const lamps = devices.filter((d) => d.deviceType !== 'extScene');
+    const scenes = devices.filter((d) => d.deviceType === 'extScene');
+
     return (
         <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -89,49 +127,115 @@ export function AutomationPanel({ hubName, sendCommand }: AutomationPanelProps):
                     {I18n.t('noAutomationDevices')}
                 </Typography>
             )}
-            <Grid2 container spacing={2}>
-                {devices.map((dev) => {
-                    const friendlyName = dev.id.replace(/_/g, ' ').replace(/^hue-light\./, '');
-                    return (
-                        <Grid2 key={dev.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                            <Card variant="outlined">
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                        <LightbulbIcon color={dev.on ? 'warning' : 'disabled'} />
-                                        <Typography variant="subtitle2" fontWeight={600} sx={{ flex: 1 }}>
-                                            {friendlyName}
-                                        </Typography>
-                                    </Box>
-                                    <FormControlLabel
-                                        control={
-                                            <Switch
-                                                checked={dev.on}
-                                                onChange={(_, checked): void => { void handleToggle(dev.id, checked); }}
-                                            />
-                                        }
-                                        label={dev.on ? 'On' : 'Off'}
-                                    />
-                                    {dev.brightness !== undefined && (
-                                        <Box sx={{ px: 1, mt: 1 }}>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {I18n.t('brightness')}: {Math.round(dev.brightness / 254 * 100)}%
+
+            {/* Lamps section */}
+            {lamps.length > 0 && (
+                <>
+                    <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+                        {I18n.t('lamps')}
+                    </Typography>
+                    <Grid2 container spacing={2}>
+                        {lamps.map((dev) => (
+                            <Grid2 key={dev.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                                <Card variant="outlined">
+                                    <CardContent>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                            <LightbulbIcon color={dev.on ? 'warning' : 'disabled'} />
+                                            <Typography variant="subtitle2" fontWeight={600} sx={{ flex: 1 }}>
+                                                {dev.friendlyName}
                                             </Typography>
-                                            <Slider
-                                                value={dev.brightness}
-                                                min={0}
-                                                max={254}
-                                                onChange={(_, val): void => { void handleBrightness(dev.id, val as number); }}
-                                                size="small"
-                                                disabled={!dev.on}
-                                            />
                                         </Box>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </Grid2>
-                    );
-                })}
-            </Grid2>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={dev.on}
+                                                    onChange={(_, checked): void => { void handleToggle(dev.id, checked); }}
+                                                />
+                                            }
+                                            label={dev.on ? 'On' : 'Off'}
+                                        />
+                                        {dev.brightness !== undefined && (
+                                            <Box sx={{ px: 1, mt: 1 }}>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {I18n.t('brightness')}: {Math.round(dev.brightness / 254 * 100)}%
+                                                </Typography>
+                                                <Slider
+                                                    value={dev.brightness}
+                                                    min={0}
+                                                    max={254}
+                                                    onChange={(_, val): void => { void handleBrightness(dev.id, val as number); }}
+                                                    size="small"
+                                                    disabled={!dev.on}
+                                                />
+                                            </Box>
+                                        )}
+                                        {dev.hasColorTemp && dev.color?.temp !== undefined && (
+                                            <Box sx={{ px: 1, mt: 1 }}>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {I18n.t('colorTemp')}: {dev.color.temp}
+                                                </Typography>
+                                                <Slider
+                                                    value={dev.color.temp}
+                                                    min={153}
+                                                    max={500}
+                                                    onChange={(_, val): void => {
+                                                        void sendCommand('setAutomationState', {
+                                                            hubName, deviceId: dev.id,
+                                                            state: { on: true, color: { temp: val as number } },
+                                                        });
+                                                        setDevices((prev) => prev.map((d) =>
+                                                            d.id === dev.id
+                                                                ? { ...d, on: true, color: { ...d.color, temp: val as number } }
+                                                                : d,
+                                                        ));
+                                                    }}
+                                                    size="small"
+                                                    disabled={!dev.on}
+                                                />
+                                            </Box>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </Grid2>
+                        ))}
+                    </Grid2>
+                </>
+            )}
+
+            {/* Scenes section */}
+            {scenes.length > 0 && (
+                <>
+                    {lamps.length > 0 && <Divider sx={{ my: 3 }} />}
+                    <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+                        {I18n.t('scenes')}
+                    </Typography>
+                    <Grid2 container spacing={2}>
+                        {scenes.map((dev) => (
+                            <Grid2 key={dev.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                                <Card variant="outlined">
+                                    <CardContent>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                            <TheaterComedyIcon color={dev.on ? 'primary' : 'disabled'} />
+                                            <Typography variant="subtitle2" fontWeight={600} sx={{ flex: 1 }}>
+                                                {dev.friendlyName}
+                                            </Typography>
+                                        </Box>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={dev.on}
+                                                    onChange={(_, checked): void => { void handleToggle(dev.id, checked); }}
+                                                />
+                                            }
+                                            label={dev.on ? 'On' : 'Off'}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </Grid2>
+                        ))}
+                    </Grid2>
+                </>
+            )}
         </Box>
     );
 }

@@ -76,8 +76,20 @@ export class MessageHandler {
                         (obj.message as { hubName: string; activityId: string }).activityId,
                     );
                     break;
-                case 'renameHub':
-                    response = await this.renameHub(obj.message as { hubName: string; newName: string });
+                case 'getWifiNetworks':
+                    response = await this.getWifiNetworks(obj.message as { hubName: string });
+                    break;
+                case 'getBluetoothDevices':
+                    response = await this.getBluetoothDevices(obj.message as { hubName: string });
+                    break;
+                case 'getRFDevices':
+                    response = await this.getRFDevices(obj.message as { hubName: string });
+                    break;
+                case 'getAutomationConfig':
+                    response = await this.getAutomationConfig(obj.message as { hubName: string });
+                    break;
+                case 'startBTPairing':
+                    response = await this.startBTPairing(obj.message as { hubName: string; deviceId: string });
                     break;
                 case 'setSleepTimer':
                     response = await this.setSleepTimer(obj.message as { hubName: string; minutes: number });
@@ -280,14 +292,55 @@ export class MessageHandler {
         }
     }
 
-    private async renameHub(msg: { hubName: string; newName: string }): Promise<MessageResponse> {
-        if (!msg?.hubName || !msg?.newName) return { success: false, error: 'hubName and newName required' };
+    private async getWifiNetworks(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
         try {
-            await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?set', { friendlyName: msg.newName });
-            return { success: true, data: { renamed: true } };
+            const result = await this.writer.sendHubQuery(msg.hubName, 'wifi.networks', {});
+            return { success: true, data: result };
         } catch (e: unknown) {
-            const errMsg = e instanceof Error ? e.message : String(e);
-            return { success: false, error: errMsg };
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async getBluetoothDevices(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'setup.content?getbtsettings', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async getRFDevices(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.connect/vnd.logitech.deviceinfo?get', { verb: 'get' });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async getAutomationConfig(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'proxy.resource?get', {
+                uri: 'dynamite://HomeAutomationService/Config/',
+            });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async startBTPairing(msg: { hubName: string; deviceId: string }): Promise<MessageResponse> {
+        if (!msg?.hubName || !msg?.deviceId) return { success: false, error: 'hubName and deviceId required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?bluetoothPairing', { deviceId: msg.deviceId });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
         }
     }
 

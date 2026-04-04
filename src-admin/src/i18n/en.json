@@ -186,5 +186,12 @@
   "selectDevicesForActivity": "Select devices for this activity and assign roles.",
   "startFirmwareUpdate": "Start Firmware Update",
   "firmwareUpdating": "Firmware update starting...",
-  "firmwareUpdateStarted": "Firmware update started. Hub will restart automatically."
+  "firmwareUpdateStarted": "Firmware update started. Hub will restart automatically.",
+  "scenes": "Scenes",
+  "lamps": "Lamps",
+  "colorTemp": "Color Temperature",
+  "wifiNetworks": "WiFi Networks",
+  "bluetoothDevices": "Bluetooth Devices",
+  "rfDevices": "RF Devices (Remote)",
+  "channelRequiresActivity": "Start an activity first to change channels."
 }

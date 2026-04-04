@@ -142,12 +142,19 @@ export class ConfigWriter {
     }
 
     /**
-     * Sync the hub to persist all pending changes.
+     * Sync hub config. setup.sync triggers cloud sync (no response expected).
+     * proxy.resource?put already persists changes, so sync is optional.
      */
     async syncHub(hubName: string): Promise<MessageResponse> {
         try {
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`Hub '${hubName}' sync completed`);
+            // setup.sync triggers cloud sync - fire and forget (no response)
+            const hub = this.adapter.hubs[hubName];
+            if (hub?.client?.ws) {
+                hub.client.ws.send(JSON.stringify({
+                    hbus: { cmd: 'setup.sync', id: `sync-${++this.msgCounter}`, params: {} },
+                }));
+            }
+            this.adapter.log.info(`Hub '${hubName}' sync triggered`);
             return { success: true, data: { synced: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
@@ -157,15 +164,14 @@ export class ConfigWriter {
     }
 
     /**
-     * Write configuration changes via proxy.resource?put with forceUpdate.
+     * Write configuration changes via proxy.resource?put.
+     * This is the native hub command for persisting config changes (tested & confirmed).
      */
     async writeConfig(hubName: string, changes: Record<string, unknown>): Promise<MessageResponse> {
         try {
             const params = { ...changes, forceUpdate: true };
             await this.sendCommand(hubName, 'proxy.resource?put', params);
-            this.adapter.log.debug(`writeConfig: proxy.resource?put succeeded for '${hubName}'`);
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`writeConfig: sync completed for '${hubName}'`);
+            this.adapter.log.info(`writeConfig: proxy.resource?put succeeded for '${hubName}'`);
             return { success: true, data: { written: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
@@ -175,16 +181,27 @@ export class ConfigWriter {
     }
 
     /**
-     * Add a new device to the hub, then sync.
+     * Add a device by reading the current DeviceList, appending the new device,
+     * and writing it back via proxy.resource?put.
      */
     async addDevice(hubName: string, device: Record<string, unknown>): Promise<MessageResponse> {
         try {
-            const params = { ...device, forceUpdate: true };
-            const result = await this.sendCommand(hubName, 'home.hub.device.add', params);
-            this.adapter.log.debug(`addDevice: device added to '${hubName}'`);
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`addDevice: sync completed for '${hubName}'`);
-            return { success: true, data: result };
+            // Read current device list
+            const currentList = await this.sendCommand(hubName, 'proxy.resource?get', {
+                uri: 'harmony://Account/0/DeviceList',
+            }) as Record<string, unknown>;
+            const resource = (currentList as any)?.resource;
+            const devices = resource?.DevicesWithFeatures || [];
+            // Append new device
+            devices.push({ Device: device, Features: [] });
+            // Write back
+            await this.sendCommand(hubName, 'proxy.resource?put', {
+                uri: 'harmony://Account/0/DeviceList',
+                resource: { ...resource, DevicesWithFeatures: devices },
+                forceUpdate: true,
+            });
+            this.adapter.log.info(`addDevice: device added to '${hubName}'`);
+            return { success: true, data: { added: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             this.adapter.log.error(`addDevice failed: ${msg}`);
@@ -193,15 +210,25 @@ export class ConfigWriter {
     }
 
     /**
-     * Delete a device from the hub, then sync.
+     * Delete a device by reading the current DeviceList, removing the device,
+     * and writing it back via proxy.resource?put.
      */
     async deleteDevice(hubName: string, deviceId: string): Promise<MessageResponse> {
         try {
-            const params = { deviceId, forceUpdate: true };
-            await this.sendCommand(hubName, 'home.hub.device.delete', params);
-            this.adapter.log.debug(`deleteDevice: device '${deviceId}' deleted from '${hubName}'`);
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`deleteDevice: sync completed for '${hubName}'`);
+            const currentList = await this.sendCommand(hubName, 'proxy.resource?get', {
+                uri: 'harmony://Account/0/DeviceList',
+            }) as Record<string, unknown>;
+            const resource = (currentList as any)?.resource;
+            const devices = resource?.DevicesWithFeatures || [];
+            const filtered = devices.filter((d: any) =>
+                String(d?.Device?.Id ?? d?.Device?.id) !== String(deviceId),
+            );
+            await this.sendCommand(hubName, 'proxy.resource?put', {
+                uri: 'harmony://Account/0/DeviceList',
+                resource: { ...resource, DevicesWithFeatures: filtered },
+                forceUpdate: true,
+            });
+            this.adapter.log.info(`deleteDevice: device '${deviceId}' deleted from '${hubName}'`);
             return { success: true, data: { deleted: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
@@ -211,15 +238,13 @@ export class ConfigWriter {
     }
 
     /**
-     * Save (update) a device on the hub, then sync.
+     * Save (update) a device via proxy.resource?put.
      */
     async saveDevice(hubName: string, device: Record<string, unknown>): Promise<MessageResponse> {
         try {
             const params = { ...device, forceUpdate: true };
-            await this.sendCommand(hubName, 'home.hub.device.save', params);
-            this.adapter.log.debug(`saveDevice: device saved on '${hubName}'`);
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`saveDevice: sync completed for '${hubName}'`);
+            await this.sendCommand(hubName, 'proxy.resource?put', params);
+            this.adapter.log.info(`saveDevice: device saved on '${hubName}'`);
             return { success: true, data: { saved: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
@@ -229,16 +254,24 @@ export class ConfigWriter {
     }
 
     /**
-     * Generate an activity on the hub. Uses 60s timeout since generation can take 10+ seconds.
+     * Create an activity by reading the current ActivityList, appending the new
+     * activity, and writing it back via proxy.resource?put.
      */
     async generateActivity(hubName: string, activityDef: Record<string, unknown>): Promise<MessageResponse> {
         try {
-            const params = { ...activityDef, forceUpdate: true };
-            const result = await this.sendCommand(hubName, 'home.hub.activity.generate', params, 60000);
-            this.adapter.log.debug(`generateActivity: activity generated on '${hubName}'`);
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`generateActivity: sync completed for '${hubName}'`);
-            return { success: true, data: result };
+            const currentList = await this.sendCommand(hubName, 'proxy.resource?get', {
+                uri: 'harmony://Account/0/ActivityList',
+            }) as Record<string, unknown>;
+            const resource = (currentList as any)?.resource;
+            const activities = resource?.Activities || [];
+            activities.push(activityDef);
+            await this.sendCommand(hubName, 'proxy.resource?put', {
+                uri: 'harmony://Account/0/ActivityList',
+                resource: { ...resource, Activities: activities },
+                forceUpdate: true,
+            }, 60000);
+            this.adapter.log.info(`generateActivity: activity created on '${hubName}'`);
+            return { success: true, data: { created: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             this.adapter.log.error(`generateActivity failed: ${msg}`);
@@ -247,15 +280,15 @@ export class ConfigWriter {
     }
 
     /**
-     * Update activity roles on the hub, then sync.
+     * Update activity roles via proxy.resource?put with the full config.
      */
     async updateActivityRoles(hubName: string, roles: Record<string, unknown>): Promise<MessageResponse> {
         try {
-            const params = { ...roles, forceUpdate: true };
-            await this.sendCommand(hubName, 'home.hub.activity.updateRoles', params);
-            this.adapter.log.debug(`updateActivityRoles: roles updated on '${hubName}'`);
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`updateActivityRoles: sync completed for '${hubName}'`);
+            await this.sendCommand(hubName, 'proxy.resource?put', {
+                ...roles,
+                forceUpdate: true,
+            });
+            this.adapter.log.info(`updateActivityRoles: roles updated on '${hubName}'`);
             return { success: true, data: { updated: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
@@ -265,15 +298,25 @@ export class ConfigWriter {
     }
 
     /**
-     * Delete an activity from the hub, then sync.
+     * Delete an activity by reading the current ActivityList, removing the activity,
+     * and writing it back via proxy.resource?put.
      */
     async deleteActivity(hubName: string, activityId: string): Promise<MessageResponse> {
         try {
-            const params = { activityId, forceUpdate: true };
-            await this.sendCommand(hubName, 'home.hub.activity.delete', params);
-            this.adapter.log.debug(`deleteActivity: activity '${activityId}' deleted from '${hubName}'`);
-            await this.sendCommand(hubName, 'home.hub.sync', {});
-            this.adapter.log.info(`deleteActivity: sync completed for '${hubName}'`);
+            const currentList = await this.sendCommand(hubName, 'proxy.resource?get', {
+                uri: 'harmony://Account/0/ActivityList',
+            }) as Record<string, unknown>;
+            const resource = (currentList as any)?.resource;
+            const activities = resource?.Activities || [];
+            const filtered = activities.filter((a: any) =>
+                String(a?.['Id-'] ?? a?.Id ?? a?.id) !== String(activityId),
+            );
+            await this.sendCommand(hubName, 'proxy.resource?put', {
+                uri: 'harmony://Account/0/ActivityList',
+                resource: { ...resource, Activities: filtered },
+                forceUpdate: true,
+            });
+            this.adapter.log.info(`deleteActivity: activity '${activityId}' deleted from '${hubName}'`);
             return { success: true, data: { deleted: true } };
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);

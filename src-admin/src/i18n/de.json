@@ -186,5 +186,12 @@
   "selectDevicesForActivity": "Geräte für diese Aktivität auswählen und Rollen zuweisen.",
   "startFirmwareUpdate": "Firmware-Update starten",
   "firmwareUpdating": "Firmware-Update wird gestartet...",
-  "firmwareUpdateStarted": "Firmware-Update gestartet. Hub startet automatisch neu."
+  "firmwareUpdateStarted": "Firmware-Update gestartet. Hub startet automatisch neu.",
+  "scenes": "Szenen",
+  "lamps": "Lampen",
+  "colorTemp": "Farbtemperatur",
+  "wifiNetworks": "WLAN-Netzwerke",
+  "bluetoothDevices": "Bluetooth-Geräte",
+  "rfDevices": "RF-Geräte (Fernbedienung)",
+  "channelRequiresActivity": "Starte zuerst eine Aktivität um den Kanal zu wechseln."
 }

@@ -530,7 +530,6 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         discoveryInfo={discoveryInfos[selection.hubName]}
                         stateDigest={stateDigests[selection.hubName]}
                         onUpdateGlobal={handleGlobalUpdate}
-                        onRenameHub={handleRenameHub}
                         onSetSleepTimer={handleSetSleepTimer}
                     />
                 );
