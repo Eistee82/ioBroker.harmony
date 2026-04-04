@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfigWriter = void 0;
+const http_1 = __importDefault(require("http"));
 /**
  * Writes configuration changes to Harmony Hubs via WebSocket.
  *
@@ -20,6 +24,59 @@ class ConfigWriter {
      */
     async sendHubQuery(hubName, cmd, params) {
         return this.sendCommand(hubName, cmd, params, 10000);
+    }
+    /**
+     * Send a command via HTTP POST to the hub (for commands that don't work over WebSocket).
+     * The Harmony app uses this for connect.discoveryinfo, setup.firmware, setup.account etc.
+     */
+    sendHttpPost(hubName, cmd, params, timeout = 10000) {
+        var _a;
+        const hub = this.adapter.hubs[hubName];
+        if (!hub) {
+            return Promise.reject(new Error(`Hub not found: ${hubName}`));
+        }
+        const ip = hub.ip || ((_a = hub.client) === null || _a === void 0 ? void 0 : _a.ip);
+        if (!ip) {
+            return Promise.reject(new Error(`Hub IP not available: ${hubName}`));
+        }
+        const body = JSON.stringify({ id: ++this.msgCounter, cmd, params, timeout });
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error(`HTTP command '${cmd}' timed out after ${timeout}ms`));
+            }, timeout);
+            const req = http_1.default.request({
+                hostname: ip,
+                port: 8088,
+                method: 'POST',
+                headers: {
+                    'Origin': 'http://localhost.nebula.myharmony.com',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Accept-Charset': 'utf-8',
+                    'Content-Length': Buffer.byteLength(body),
+                },
+            }, (res) => {
+                let data = '';
+                res.on('data', (chunk) => { data += chunk.toString(); });
+                res.on('end', () => {
+                    clearTimeout(timer);
+                    try {
+                        const parsed = JSON.parse(data);
+                        resolve(parsed);
+                    }
+                    catch {
+                        resolve(data);
+                    }
+                });
+            });
+            req.on('error', (err) => {
+                clearTimeout(timer);
+                reject(err);
+            });
+            this.adapter.log.debug(`ConfigWriter HTTP POST: ${cmd} to ${ip}:8088`);
+            req.write(body);
+            req.end();
+        });
     }
     /**
      * Send a raw command to the hub's WebSocket and wait for the matching response.

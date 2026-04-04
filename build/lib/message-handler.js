@@ -178,9 +178,9 @@ class MessageHandler {
                 },
             };
         }
-        // Try to get full discovery info via WebSocket
+        // Get full discovery info via HTTP POST (as the Harmony app does)
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
+            const result = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
             return { success: true, data: result };
         }
         catch {
@@ -237,7 +237,7 @@ class MessageHandler {
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName) || !(msg === null || msg === void 0 ? void 0 : msg.newName))
             return { success: false, error: 'hubName and newName required' };
         try {
-            await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?set', { friendlyName: msg.newName });
+            await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?set', { friendlyName: msg.newName });
             return { success: true, data: { renamed: true } };
         }
         catch (e) {
@@ -331,11 +331,9 @@ class MessageHandler {
     async checkFirmware(msg) {
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
-        // Try the discovery info which reliably returns firmware version
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
-            const info = result;
-            return { success: true, data: { firmwareVersion: (info === null || info === void 0 ? void 0 : info.firmwareVersion) || (info === null || info === void 0 ? void 0 : info.firmware) || 'unknown' } };
+            const result = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {});
+            return { success: true, data: result };
         }
         catch (e) {
             const errMsg = e instanceof Error ? e.message : String(e);
@@ -346,7 +344,7 @@ class MessageHandler {
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
+            const result = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
             return { success: true, data: result };
         }
         catch (e) {
@@ -357,22 +355,20 @@ class MessageHandler {
     async getProvisionInfo(msg) {
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
-        // Provision info may not be available locally, return what we have
-        const hub = this.adapter.hubs[msg.hubName];
-        return {
-            success: true,
-            data: {
-                friendlyName: (hub === null || hub === void 0 ? void 0 : hub.friendlyName) || msg.hubName,
-                ip: (hub === null || hub === void 0 ? void 0 : hub.ip) || '',
-            },
-        };
+        try {
+            const result = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {});
+            return { success: true, data: result };
+        }
+        catch (e) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
     }
     async getCapabilities(msg) {
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
-        // CapabilityList query may not work on all hubs, return safe defaults
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'proxy.resource?get', {
+            const result = await this.writer.sendHttpPost(msg.hubName, 'proxy.resource?get', {
                 uri: `harmony://Account/0/CapabilityList`,
             });
             return { success: true, data: result };

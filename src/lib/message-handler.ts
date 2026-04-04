@@ -209,9 +209,9 @@ export class MessageHandler {
             };
         }
 
-        // Try to get full discovery info via WebSocket
+        // Get full discovery info via HTTP POST (as the Harmony app does)
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
+            const result = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
             return { success: true, data: result };
         } catch {
             // Fallback to basic stored info
@@ -264,7 +264,7 @@ export class MessageHandler {
     private async renameHub(msg: { hubName: string; newName: string }): Promise<MessageResponse> {
         if (!msg?.hubName || !msg?.newName) return { success: false, error: 'hubName and newName required' };
         try {
-            await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?set', { friendlyName: msg.newName });
+            await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?set', { friendlyName: msg.newName });
             return { success: true, data: { renamed: true } };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
@@ -354,11 +354,9 @@ export class MessageHandler {
 
     private async checkFirmware(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
-        // Try the discovery info which reliably returns firmware version
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
-            const info = result as Record<string, unknown>;
-            return { success: true, data: { firmwareVersion: info?.firmwareVersion || info?.firmware || 'unknown' } };
+            const result = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {});
+            return { success: true, data: result };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
@@ -368,7 +366,7 @@ export class MessageHandler {
     private async getSysInfo(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
+            const result = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
             return { success: true, data: result };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
@@ -378,22 +376,19 @@ export class MessageHandler {
 
     private async getProvisionInfo(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
-        // Provision info may not be available locally, return what we have
-        const hub = this.adapter.hubs[msg.hubName];
-        return {
-            success: true,
-            data: {
-                friendlyName: hub?.friendlyName || msg.hubName,
-                ip: hub?.ip || '',
-            },
-        };
+        try {
+            const result = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
     }
 
     private async getCapabilities(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
-        // CapabilityList query may not work on all hubs, return safe defaults
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'proxy.resource?get', {
+            const result = await this.writer.sendHttpPost(msg.hubName, 'proxy.resource?get', {
                 uri: `harmony://Account/0/CapabilityList`,
             });
             return { success: true, data: result };

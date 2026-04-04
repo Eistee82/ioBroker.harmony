@@ -1,4 +1,5 @@
 import type { MessageResponse } from './types.js';
+import http from 'http';
 
 /**
  * Writes configuration changes to Harmony Hubs via WebSocket.
@@ -22,6 +23,63 @@ export class ConfigWriter {
      */
     async sendHubQuery(hubName: string, cmd: string, params: Record<string, unknown>): Promise<unknown> {
         return this.sendCommand(hubName, cmd, params, 10000);
+    }
+
+    /**
+     * Send a command via HTTP POST to the hub (for commands that don't work over WebSocket).
+     * The Harmony app uses this for connect.discoveryinfo, setup.firmware, setup.account etc.
+     */
+    sendHttpPost(hubName: string, cmd: string, params: Record<string, unknown>, timeout = 10000): Promise<unknown> {
+        const hub = this.adapter.hubs[hubName];
+        if (!hub) {
+            return Promise.reject(new Error(`Hub not found: ${hubName}`));
+        }
+        const ip = hub.ip || hub.client?.ip;
+        if (!ip) {
+            return Promise.reject(new Error(`Hub IP not available: ${hubName}`));
+        }
+
+        const body = JSON.stringify({ id: ++this.msgCounter, cmd, params, timeout });
+
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error(`HTTP command '${cmd}' timed out after ${timeout}ms`));
+            }, timeout);
+
+            const req = http.request({
+                hostname: ip,
+                port: 8088,
+                method: 'POST',
+                headers: {
+                    'Origin': 'http://localhost.nebula.myharmony.com',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Accept-Charset': 'utf-8',
+                    'Content-Length': Buffer.byteLength(body),
+                },
+            }, (res) => {
+                let data = '';
+                res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+                res.on('end', () => {
+                    clearTimeout(timer);
+                    try {
+                        const parsed = JSON.parse(data);
+                        resolve(parsed);
+                    } catch {
+                        resolve(data);
+                    }
+                });
+            });
+
+            req.on('error', (err: Error) => {
+                clearTimeout(timer);
+                reject(err);
+            });
+
+            this.adapter.log.debug(`ConfigWriter HTTP POST: ${cmd} to ${ip}:8088`);
+            req.write(body);
+            req.end();
+        });
     }
 
     /**
