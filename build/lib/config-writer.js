@@ -100,17 +100,26 @@ class ConfigWriter {
                 reject(new Error(`Command '${cmd}' timed out after ${timeout}ms`));
             }, timeout);
             const onMessage = (raw) => {
-                var _a;
+                var _a, _b, _c, _d;
                 try {
                     const data = JSON.parse(raw);
-                    if (((_a = data === null || data === void 0 ? void 0 : data.hbus) === null || _a === void 0 ? void 0 : _a.id) === id) {
+                    // Hub responds in two formats:
+                    // 1) Direct: { cmd, code, id, msg, data } (most commands)
+                    // 2) Wrapped: { hbus: { cmd, id, ... } } (some internal commands)
+                    const msgId = (data === null || data === void 0 ? void 0 : data.id) || ((_a = data === null || data === void 0 ? void 0 : data.hbus) === null || _a === void 0 ? void 0 : _a.id);
+                    if (msgId === id) {
                         clearTimeout(timer);
                         ws.removeListener('message', onMessage);
-                        if (data.hbus.error) {
-                            reject(new Error(`Hub error for '${cmd}': ${JSON.stringify(data.hbus.error)}`));
+                        const error = (_b = data === null || data === void 0 ? void 0 : data.hbus) === null || _b === void 0 ? void 0 : _b.error;
+                        if (error) {
+                            reject(new Error(`Hub error for '${cmd}': ${JSON.stringify(error)}`));
+                        }
+                        else if ((data === null || data === void 0 ? void 0 : data.code) && data.code !== 200 && data.code !== '200') {
+                            reject(new Error(`Hub error for '${cmd}': code ${data.code} - ${data.msg || ''}`));
                         }
                         else {
-                            resolve(data.hbus);
+                            // Return the data payload (direct format has 'data' field)
+                            resolve((_d = (_c = data === null || data === void 0 ? void 0 : data.data) !== null && _c !== void 0 ? _c : data === null || data === void 0 ? void 0 : data.hbus) !== null && _d !== void 0 ? _d : data);
                         }
                     }
                 }

@@ -208,49 +208,36 @@ export class MessageHandler {
             ip: hub?.ip || '',
         };
 
-        // Get provision info via WebSocket (full vnd.logitech path works without auth token)
+        // All queries go over WebSocket using full vnd.logitech paths (tested and confirmed working)
         if (hub?.client) {
+            // Discovery info: firmware, uuid, IP, port, protocols
             try {
-                const provResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.setup/vnd.logitech.account?getProvisionInfo', {});
-                const provData = (provResult as Record<string, unknown>)?.params ?? provResult;
-                const prov = provData as Record<string, unknown>;
+                const disc = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', { format: 'json' }) as Record<string, unknown>;
+                Object.assign(info, disc);
+            } catch { /* ignore */ }
+
+            // Provision info: email, accountId, remoteId, language
+            try {
+                const prov = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.setup/vnd.logitech.account?getProvisionInfo', { verb: 'get' }) as Record<string, unknown>;
                 if (prov.email) info.email = prov.email;
                 if (prov.accountId) info.accountId = prov.accountId;
                 if (prov.activeRemoteId) info.remoteId = String(prov.activeRemoteId);
                 if (prov.language) info.locale = prov.language;
-            } catch {
-                // Fallback to HTTP POST
-                try {
-                    const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {}) as Record<string, unknown>;
-                    const provData = (raw?.data ?? raw) as Record<string, unknown>;
-                    if (provData.email) info.email = provData.email;
-                    if (provData.accountId) info.accountId = provData.accountId;
-                    if (provData.activeRemoteId) info.remoteId = String(provData.activeRemoteId);
-                    if (provData.language) info.locale = provData.language;
-                } catch { /* ignore */ }
-            }
+            } catch { /* ignore */ }
 
-            // Get system info via WebSocket
+            // System info: fw_ver, hw_ver, unit_id
             try {
-                const sysResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.harmony/vnd.logitech.harmony.system?systeminfo', {});
-                const sysData = (sysResult as Record<string, unknown>)?.params ?? sysResult;
-                const sys = sysData as Record<string, unknown>;
+                const sys = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.harmony/vnd.logitech.harmony.system?systeminfo', { verb: 'get' }) as Record<string, unknown>;
                 if (sys.fw_ver) info.firmwareVersion = sys.fw_ver;
-                if (sys.hw_ver) info.hardwareVersion = sys.hw_ver;
-                if (sys.bt_ver) info.bluetoothVersion = sys.bt_ver;
-                if (sys.wifi_ver) info.wifiVersion = sys.wifi_ver;
                 Object.assign(info, sys);
             } catch { /* ignore */ }
 
-            // Get device/pair info via WebSocket
+            // Pair info: hubType, productId, protocolVersion
             try {
-                const pairResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.connect/vnd.logitech.pair', { verb: 'get' });
-                const pairData = (pairResult as Record<string, unknown>)?.params ?? pairResult;
-                const pair = pairData as Record<string, unknown>;
-                if (pair.hubType) info.hubType = pair.hubType;
-                if (pair.uuid) info.uuid = pair.uuid;
+                const pair = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.connect/vnd.logitech.pair', { verb: 'get' }) as Record<string, unknown>;
+                if (pair.hubId) info.hubType = pair.hubId;
                 if (pair.productId) info.productId = pair.productId;
-                Object.assign(info, pair);
+                if (pair.protocolVersion) info.protocolVersion = pair.protocolVersion;
             } catch { /* ignore */ }
         }
 

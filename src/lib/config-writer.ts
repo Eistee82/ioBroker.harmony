@@ -109,13 +109,21 @@ export class ConfigWriter {
             const onMessage = (raw: string): void => {
                 try {
                     const data = JSON.parse(raw);
-                    if (data?.hbus?.id === id) {
+                    // Hub responds in two formats:
+                    // 1) Direct: { cmd, code, id, msg, data } (most commands)
+                    // 2) Wrapped: { hbus: { cmd, id, ... } } (some internal commands)
+                    const msgId = data?.id || data?.hbus?.id;
+                    if (msgId === id) {
                         clearTimeout(timer);
                         ws.removeListener('message', onMessage);
-                        if (data.hbus.error) {
-                            reject(new Error(`Hub error for '${cmd}': ${JSON.stringify(data.hbus.error)}`));
+                        const error = data?.hbus?.error;
+                        if (error) {
+                            reject(new Error(`Hub error for '${cmd}': ${JSON.stringify(error)}`));
+                        } else if (data?.code && data.code !== 200 && data.code !== '200') {
+                            reject(new Error(`Hub error for '${cmd}': code ${data.code} - ${data.msg || ''}`));
                         } else {
-                            resolve(data.hbus);
+                            // Return the data payload (direct format has 'data' field)
+                            resolve(data?.data ?? data?.hbus ?? data);
                         }
                     }
                 } catch {
