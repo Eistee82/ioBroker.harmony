@@ -161,6 +161,7 @@
   "sleepTimerDesc": "Alle Geräte nach Inaktivität automatisch ausschalten.",
   "outOfHomeDesc": "Geräte aus der Ferne steuern, wenn Sie nicht zu Hause sind.",
   "outOfHomeReadOnly": "Diese Einstellung kann nur in der Harmony-App geändert werden.",
+  "outOfHomeCloudOnly": "Fernzugriff läuft über Logitechs Cloud-Server und kann nicht lokal geändert werden.",
   "hubSettings": "Hub-Einstellungen",
   "startActivity": "Aktivität starten",
   "stopAll": "Alles aus",

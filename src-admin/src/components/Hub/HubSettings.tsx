@@ -184,7 +184,7 @@ export function HubSettings({
                                 label={oohEnabled ? I18n.t('yes') : I18n.t('no')}
                             />
                             <Typography variant="caption" color="text.secondary" display="block">
-                                {I18n.t('outOfHomeReadOnly')}
+                                {I18n.t('outOfHomeCloudOnly')}
                             </Typography>
                         </CardContent>
                     </Card>
