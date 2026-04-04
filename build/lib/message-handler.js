@@ -168,7 +168,7 @@ class MessageHandler {
         });
     }
     async getDiscoveryInfo(msg) {
-        var _a;
+        var _a, _b, _c, _d;
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
         const hub = this.adapter.hubs[msg.hubName];
@@ -177,23 +177,67 @@ class MessageHandler {
             friendlyName: (hub === null || hub === void 0 ? void 0 : hub.friendlyName) || msg.hubName,
             ip: (hub === null || hub === void 0 ? void 0 : hub.ip) || '',
         };
-        // Get account/provision info via HTTP POST (works without pairing, code 200)
-        if (hub === null || hub === void 0 ? void 0 : hub.ip) {
+        // Get provision info via WebSocket (full vnd.logitech path works without auth token)
+        if (hub === null || hub === void 0 ? void 0 : hub.client) {
             try {
-                const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {});
-                const provData = ((_a = raw === null || raw === void 0 ? void 0 : raw.data) !== null && _a !== void 0 ? _a : raw);
-                if (provData.email)
-                    info.email = provData.email;
-                if (provData.accountId)
-                    info.accountId = provData.accountId;
-                if (provData.activeRemoteId)
-                    info.remoteId = String(provData.activeRemoteId);
-                if (provData.language)
-                    info.locale = provData.language;
+                const provResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.setup/vnd.logitech.account?getProvisionInfo', {});
+                const provData = (_a = provResult === null || provResult === void 0 ? void 0 : provResult.params) !== null && _a !== void 0 ? _a : provResult;
+                const prov = provData;
+                if (prov.email)
+                    info.email = prov.email;
+                if (prov.accountId)
+                    info.accountId = prov.accountId;
+                if (prov.activeRemoteId)
+                    info.remoteId = String(prov.activeRemoteId);
+                if (prov.language)
+                    info.locale = prov.language;
             }
             catch {
-                // Provision info not available
+                // Fallback to HTTP POST
+                try {
+                    const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {});
+                    const provData = ((_b = raw === null || raw === void 0 ? void 0 : raw.data) !== null && _b !== void 0 ? _b : raw);
+                    if (provData.email)
+                        info.email = provData.email;
+                    if (provData.accountId)
+                        info.accountId = provData.accountId;
+                    if (provData.activeRemoteId)
+                        info.remoteId = String(provData.activeRemoteId);
+                    if (provData.language)
+                        info.locale = provData.language;
+                }
+                catch { /* ignore */ }
             }
+            // Get system info via WebSocket
+            try {
+                const sysResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.harmony/vnd.logitech.harmony.system?systeminfo', {});
+                const sysData = (_c = sysResult === null || sysResult === void 0 ? void 0 : sysResult.params) !== null && _c !== void 0 ? _c : sysResult;
+                const sys = sysData;
+                if (sys.fw_ver)
+                    info.firmwareVersion = sys.fw_ver;
+                if (sys.hw_ver)
+                    info.hardwareVersion = sys.hw_ver;
+                if (sys.bt_ver)
+                    info.bluetoothVersion = sys.bt_ver;
+                if (sys.wifi_ver)
+                    info.wifiVersion = sys.wifi_ver;
+                Object.assign(info, sys);
+            }
+            catch { /* ignore */ }
+            // Get device/pair info via WebSocket
+            try {
+                const pairResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.connect/vnd.logitech.pair', { verb: 'get' });
+                const pairData = (_d = pairResult === null || pairResult === void 0 ? void 0 : pairResult.params) !== null && _d !== void 0 ? _d : pairResult;
+                const pair = pairData;
+                if (pair.hubType)
+                    info.hubType = pair.hubType;
+                if (pair.uuid)
+                    info.uuid = pair.uuid;
+                if (pair.productId)
+                    info.productId = pair.productId;
+                Object.assign(info, pair);
+            }
+            catch { /* ignore */ }
         }
         return { success: true, data: info };
     }
@@ -336,12 +380,10 @@ class MessageHandler {
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
         try {
-            const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {});
-            // code 417 = not authenticated/paired, not a real firmware response
-            if ((raw === null || raw === void 0 ? void 0 : raw.code) === '417' || (raw === null || raw === void 0 ? void 0 : raw.code) === 417) {
-                return { success: true, data: { requiresPairing: true, message: 'Firmware check requires hub pairing (HTTP 417)' } };
-            }
-            return { success: true, data: (_a = raw === null || raw === void 0 ? void 0 : raw.data) !== null && _a !== void 0 ? _a : raw };
+            // Use the full vnd.logitech path over WebSocket (from decompiled APK BaseHub.java)
+            const result = await this.writer.sendHubQuery(msg.hubName, 'vnd.logtech.setup/vnd.logitech.firmware?check', {});
+            const data = (_a = result === null || result === void 0 ? void 0 : result.params) !== null && _a !== void 0 ? _a : result;
+            return { success: true, data };
         }
         catch (e) {
             const errMsg = e instanceof Error ? e.message : String(e);
@@ -355,8 +397,8 @@ class MessageHandler {
         if (!(hub === null || hub === void 0 ? void 0 : hub.client))
             return { success: false, error: `Hub client not available: ${msg.hubName}` };
         try {
-            // Use the WebSocket command the Harmony app uses (from decompiled APK: JavaScriptInterface.java)
-            const result = await this.writer.sendHubQuery(msg.hubName, 'home.hub.firmware.startDownload', {}, 60000);
+            // Use the full vnd.logitech path (from decompiled APK BaseHub.java)
+            const result = await this.writer.sendHubQuery(msg.hubName, 'vnd.logtech.setup/vnd.logitech.firmware?update', {}, 60000);
             return { success: true, data: result };
         }
         catch (e) {
@@ -365,11 +407,13 @@ class MessageHandler {
         }
     }
     async getSysInfo(msg) {
+        var _a;
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
         try {
-            const result = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
-            return { success: true, data: result };
+            const result = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.harmony/vnd.logitech.harmony.system?systeminfo', {});
+            const data = (_a = result === null || result === void 0 ? void 0 : result.params) !== null && _a !== void 0 ? _a : result;
+            return { success: true, data };
         }
         catch (e) {
             const errMsg = e instanceof Error ? e.message : String(e);

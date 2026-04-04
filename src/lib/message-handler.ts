@@ -208,18 +208,50 @@ export class MessageHandler {
             ip: hub?.ip || '',
         };
 
-        // Get account/provision info via HTTP POST (works without pairing, code 200)
-        if (hub?.ip) {
+        // Get provision info via WebSocket (full vnd.logitech path works without auth token)
+        if (hub?.client) {
             try {
-                const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {}) as Record<string, unknown>;
-                const provData = (raw?.data ?? raw) as Record<string, unknown>;
-                if (provData.email) info.email = provData.email;
-                if (provData.accountId) info.accountId = provData.accountId;
-                if (provData.activeRemoteId) info.remoteId = String(provData.activeRemoteId);
-                if (provData.language) info.locale = provData.language;
+                const provResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.setup/vnd.logitech.account?getProvisionInfo', {});
+                const provData = (provResult as Record<string, unknown>)?.params ?? provResult;
+                const prov = provData as Record<string, unknown>;
+                if (prov.email) info.email = prov.email;
+                if (prov.accountId) info.accountId = prov.accountId;
+                if (prov.activeRemoteId) info.remoteId = String(prov.activeRemoteId);
+                if (prov.language) info.locale = prov.language;
             } catch {
-                // Provision info not available
+                // Fallback to HTTP POST
+                try {
+                    const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {}) as Record<string, unknown>;
+                    const provData = (raw?.data ?? raw) as Record<string, unknown>;
+                    if (provData.email) info.email = provData.email;
+                    if (provData.accountId) info.accountId = provData.accountId;
+                    if (provData.activeRemoteId) info.remoteId = String(provData.activeRemoteId);
+                    if (provData.language) info.locale = provData.language;
+                } catch { /* ignore */ }
             }
+
+            // Get system info via WebSocket
+            try {
+                const sysResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.harmony/vnd.logitech.harmony.system?systeminfo', {});
+                const sysData = (sysResult as Record<string, unknown>)?.params ?? sysResult;
+                const sys = sysData as Record<string, unknown>;
+                if (sys.fw_ver) info.firmwareVersion = sys.fw_ver;
+                if (sys.hw_ver) info.hardwareVersion = sys.hw_ver;
+                if (sys.bt_ver) info.bluetoothVersion = sys.bt_ver;
+                if (sys.wifi_ver) info.wifiVersion = sys.wifi_ver;
+                Object.assign(info, sys);
+            } catch { /* ignore */ }
+
+            // Get device/pair info via WebSocket
+            try {
+                const pairResult = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.connect/vnd.logitech.pair', { verb: 'get' });
+                const pairData = (pairResult as Record<string, unknown>)?.params ?? pairResult;
+                const pair = pairData as Record<string, unknown>;
+                if (pair.hubType) info.hubType = pair.hubType;
+                if (pair.uuid) info.uuid = pair.uuid;
+                if (pair.productId) info.productId = pair.productId;
+                Object.assign(info, pair);
+            } catch { /* ignore */ }
         }
 
         return { success: true, data: info };
@@ -355,12 +387,10 @@ export class MessageHandler {
     private async checkFirmware(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
         try {
-            const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {}) as Record<string, unknown>;
-            // code 417 = not authenticated/paired, not a real firmware response
-            if (raw?.code === '417' || raw?.code === 417) {
-                return { success: true, data: { requiresPairing: true, message: 'Firmware check requires hub pairing (HTTP 417)' } };
-            }
-            return { success: true, data: raw?.data ?? raw };
+            // Use the full vnd.logitech path over WebSocket (from decompiled APK BaseHub.java)
+            const result = await this.writer.sendHubQuery(msg.hubName, 'vnd.logtech.setup/vnd.logitech.firmware?check', {});
+            const data = (result as Record<string, unknown>)?.params ?? result;
+            return { success: true, data };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
@@ -373,8 +403,8 @@ export class MessageHandler {
         if (!hub?.client) return { success: false, error: `Hub client not available: ${msg.hubName}` };
 
         try {
-            // Use the WebSocket command the Harmony app uses (from decompiled APK: JavaScriptInterface.java)
-            const result = await this.writer.sendHubQuery(msg.hubName, 'home.hub.firmware.startDownload', {}, 60000);
+            // Use the full vnd.logitech path (from decompiled APK BaseHub.java)
+            const result = await this.writer.sendHubQuery(msg.hubName, 'vnd.logtech.setup/vnd.logitech.firmware?update', {}, 60000);
             return { success: true, data: result };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
@@ -385,8 +415,9 @@ export class MessageHandler {
     private async getSysInfo(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
         try {
-            const result = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
-            return { success: true, data: result };
+            const result = await this.writer.sendHubQuery(msg.hubName, 'vnd.logitech.harmony/vnd.logitech.harmony.system?systeminfo', {});
+            const data = (result as Record<string, unknown>)?.params ?? result;
+            return { success: true, data };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
