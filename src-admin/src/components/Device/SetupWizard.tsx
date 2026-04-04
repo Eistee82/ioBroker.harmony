@@ -41,6 +41,7 @@ interface DeviceDefinition {
 
 interface SetupWizardProps {
     hubName: string;
+    sendCommand?: <T>(command: string, payload?: unknown) => Promise<{ success: boolean; data?: T; error?: string }>;
     onComplete: (deviceDef: DeviceDefinition) => void;
     onCancel: () => void;
 }
@@ -60,7 +61,7 @@ const DEVICE_TYPES = [
 
 const STEPS = ['Device Type', 'Find Codes', 'Test', 'Name', 'Complete'];
 
-export function SetupWizard({ hubName, onComplete, onCancel }: SetupWizardProps): React.JSX.Element {
+export function SetupWizard({ hubName, sendCommand, onComplete, onCancel }: SetupWizardProps): React.JSX.Element {
     const [step, setStep] = useState(0);
     const [selectedType, setSelectedType] = useState('');
     const [manufacturer, setManufacturer] = useState('');
@@ -148,7 +149,7 @@ export function SetupWizard({ hubName, onComplete, onCancel }: SetupWizardProps)
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                             Search the IR database for your device, or add codes manually.
                         </Typography>
-                        <IRDBSearch onSelectCodeSet={handleSelectCodeSet} />
+                        <IRDBSearch onSelectCodeSet={handleSelectCodeSet} sendCommand={sendCommand!} />
                         <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
                             <IRCodeInput onAddCode={handleAddManualCode} />
                             {codes.length > 0 && (

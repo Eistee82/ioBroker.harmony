@@ -104,7 +104,7 @@ export function ActivityList({ activities, onSelectActivity, onReorder }: Activi
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <HarmonyIcon src={getActivityIconSrc(act.type)} alt={act.label} size={28} />
+                                            <HarmonyIcon src={getActivityIconSrc(act.type)} alt={act.label} size={36} />
                                         </TableCell>
                                         <TableCell>
                                             <Typography variant="body2" fontWeight={600} noWrap>

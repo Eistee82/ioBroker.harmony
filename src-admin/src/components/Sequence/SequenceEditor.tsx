@@ -165,7 +165,7 @@ export function SequenceEditor({ sequence, allDevices, onUpdate }: SequenceEdito
                                             {isDelay ? (
                                                 <TimerIcon fontSize="small" color="warning" />
                                             ) : (
-                                                cmdIconSrc ? <HarmonyIcon src={cmdIconSrc} alt={action.command} size={20} /> : <BoltIcon fontSize="small" color="primary" />
+                                                cmdIconSrc ? <HarmonyIcon src={cmdIconSrc} alt={action.command} size={28} /> : <BoltIcon fontSize="small" color="primary" />
                                             )}
                                             <Typography variant="body2" fontWeight={500} sx={{ minWidth: 50 }}>
                                                 {I18n.t('step')} {i + 1}
@@ -190,7 +190,7 @@ export function SequenceEditor({ sequence, allDevices, onUpdate }: SequenceEdito
                                                         {allDevices.map((dev) => (
                                                             <MenuItem key={dev.id} value={dev.id}>
                                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={18} />
+                                                                    <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={24} />
                                                                     {dev.label}
                                                                 </Box>
                                                             </MenuItem>

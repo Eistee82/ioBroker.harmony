@@ -31,29 +31,12 @@ interface IRDBCodeSet {
 
 interface IRDBSearchProps {
     onSelectCodeSet: (manufacturer: string, deviceType: string, model: string, codes: Array<{ name: string; functionCode: string }>) => void;
+    sendCommand: <T>(command: string, payload?: unknown) => Promise<{ success: boolean; data?: T; error?: string }>;
 }
-
-// Declare global sendTo for fallback (used when socket is not available)
-declare function sendTo(
-    namespace: string, command: string, payload: unknown,
-    callback: (response: { success: boolean; data?: unknown; error?: string }) => void,
-): void;
 
 type SearchLevel = 'search' | 'manufacturer' | 'deviceType' | 'codeSet';
 
-function apiCall<T>(command: string, payload: unknown = {}): Promise<{ success: boolean; data?: T; error?: string }> {
-    return new Promise((resolve) => {
-        if (typeof sendTo !== 'function') {
-            resolve({ success: false, error: 'sendTo not available' });
-            return;
-        }
-        sendTo('harmony.0', command, payload, (response) => {
-            resolve(response as { success: boolean; data?: T; error?: string });
-        });
-    });
-}
-
-export function IRDBSearch({ onSelectCodeSet }: IRDBSearchProps): React.JSX.Element {
+export function IRDBSearch({ onSelectCodeSet, sendCommand }: IRDBSearchProps): React.JSX.Element {
     const [level, setLevel] = useState<SearchLevel>('search');
     const [query, setQuery] = useState('');
     const [manufacturers, setManufacturers] = useState<IRDBManufacturer[]>([]);
@@ -72,7 +55,7 @@ export function IRDBSearch({ onSelectCodeSet }: IRDBSearchProps): React.JSX.Elem
         }
         setLoading(true);
         setError('');
-        const res = await apiCall<IRDBManufacturer[]>('searchIRDB', { query: q });
+        const res = await sendCommand<IRDBManufacturer[]>('searchIRDB', { query: q });
         setLoading(false);
         if (res.success && res.data) {
             setManufacturers(res.data);
@@ -93,7 +76,7 @@ export function IRDBSearch({ onSelectCodeSet }: IRDBSearchProps): React.JSX.Elem
         setLevel('manufacturer');
         setLoading(true);
         setError('');
-        const res = await apiCall<string[]>('getIRDBDeviceTypes', { manufacturer: name });
+        const res = await sendCommand<string[]>('getIRDBDeviceTypes', { manufacturer: name });
         setLoading(false);
         if (res.success && res.data) {
             setDeviceTypes(res.data);
@@ -107,7 +90,7 @@ export function IRDBSearch({ onSelectCodeSet }: IRDBSearchProps): React.JSX.Elem
         setLevel('deviceType');
         setLoading(true);
         setError('');
-        const res = await apiCall<IRDBCodeSet[]>('getIRDBCodeSets', { manufacturer: selectedManufacturer, deviceType: dt });
+        const res = await sendCommand<IRDBCodeSet[]>('getIRDBCodeSets', { manufacturer: selectedManufacturer, deviceType: dt });
         setLoading(false);
         if (res.success && res.data) {
             setCodeSets(res.data);

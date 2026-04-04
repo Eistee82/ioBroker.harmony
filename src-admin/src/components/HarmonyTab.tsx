@@ -331,6 +331,7 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         allDevices={config?.device || []}
                         onUpdate={handleActivityUpdate}
                         testCommand={handleTestCommand}
+                        sendCommand={sendCommand}
                         hubName={selection.hubName}
                     />
                 );
@@ -347,6 +348,7 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         allActivities={config?.activity || []}
                         onUpdate={handleDeviceUpdate}
                         testCommand={handleTestCommand}
+                        sendCommand={sendCommand}
                         hubName={selection.hubName}
                     />
                 );

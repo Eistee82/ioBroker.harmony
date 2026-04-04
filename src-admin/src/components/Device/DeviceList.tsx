@@ -63,7 +63,7 @@ export function DeviceList({ devices, onSelectDevice }: DeviceListProps): React.
                                         onClick={(): void => onSelectDevice(dev.id)}
                                     >
                                         <TableCell>
-                                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={28} />
+                                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={36} />
                                         </TableCell>
                                         <TableCell>
                                             <Typography variant="body2" fontWeight={600} noWrap>

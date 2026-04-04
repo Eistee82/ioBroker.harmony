@@ -63,6 +63,7 @@ interface ActivityEditorProps {
     allDevices: HarmonyDevice[];
     onUpdate: (updated: HarmonyActivity) => void;
     testCommand?: (hubName: string, deviceId: string, command: string) => Promise<{ success: boolean }>;
+    sendCommand?: <T>(command: string, payload?: unknown) => Promise<{ success: boolean; data?: T; error?: string }>;
     hubName?: string;
 }
 
@@ -78,7 +79,7 @@ const ROLE_OPTIONS = [
     'GamePlayingActivityRole',
 ];
 
-export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hubName }: ActivityEditorProps): React.JSX.Element {
+export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, sendCommand, hubName }: ActivityEditorProps): React.JSX.Element {
     const [activeTab, setActiveTab] = useState(0);
     const [editingCmd, setEditingCmd] = useState<{ groupIdx: number; funcIdx: number; label: string } | null>(null);
     const [iconPickerOpen, setIconPickerOpen] = useState(false);
@@ -124,7 +125,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                         {Object.entries(ACTIVITY_TYPE_MAP).map(([value, info]) => (
                             <MenuItem key={value} value={value}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <HarmonyIcon src={`./custom/icons/${info.file}`} alt={info.label} size={24} />
+                                    <HarmonyIcon src={`./custom/icons/${info.file}`} alt={info.label} size={32} />
                                     {info.label}
                                 </Box>
                             </MenuItem>
@@ -161,12 +162,12 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                     >
                         {selectedIcon && selectedIconSrc ? (
                             <>
-                                <HarmonyIcon src={selectedIconSrc} alt={selectedIcon.label} size={28} />
+                                <HarmonyIcon src={selectedIconSrc} alt={selectedIcon.label} size={44} />
                                 <Typography variant="body2">{selectedIcon.label}</Typography>
                             </>
                         ) : (
                             <>
-                                <HarmonyIcon src={activityIconSrc} alt="activity icon" size={28} />
+                                <HarmonyIcon src={activityIconSrc} alt="activity icon" size={44} />
                                 <Typography variant="body2" color="text.secondary">
                                     {activity.icon || I18n.t('chooseIcon')}
                                 </Typography>
@@ -406,7 +407,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                                         onClick={(): void => handleAddDevice(dev.id)}
                                     >
                                         <ListItemIcon sx={{ minWidth: 36 }}>
-                                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={24} />
+                                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={32} />
                                         </ListItemIcon>
                                         <ListItemText
                                             primary={dev.label}
@@ -512,7 +513,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                         <Card key={deviceId} variant="outlined" sx={{ mb: 1.5 }}>
                             <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                    <HarmonyIcon src={devIconSrc} alt={device?.label || deviceId} size={24} />
+                                    <HarmonyIcon src={devIconSrc} alt={device?.label || deviceId} size={32} />
                                     <Typography variant="subtitle2" fontWeight={600}>
                                         {device?.label || deviceId}
                                     </Typography>
@@ -714,7 +715,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                                                     ) : result === 'error' ? (
                                                         <ErrorOutlineIcon fontSize="small" color="error" />
                                                     ) : cmdIconSrc ? (
-                                                        <HarmonyIcon src={cmdIconSrc} alt={fn.name} size={20} />
+                                                        <HarmonyIcon src={cmdIconSrc} alt={fn.name} size={28} />
                                                     ) : (
                                                         <BoltIcon fontSize="small" color="disabled" />
                                                     )}
@@ -840,6 +841,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                     allDevices={allDevices}
                     hubName={hubName || ''}
                     testCommand={testCommand}
+                    sendCommand={sendCommand}
                     onSave={handleCommandEditorSave}
                     onClose={(): void => { setCommandEditorOpen(false); setCommandEditorTarget(null); }}
                 />
@@ -933,7 +935,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                                                 {isDelay ? (
                                                     <TimerIcon fontSize="small" color="warning" />
                                                 ) : (
-                                                    cmdIconSrc ? <HarmonyIcon src={cmdIconSrc} alt={action.command} size={20} /> : <BoltIcon fontSize="small" color="primary" />
+                                                    cmdIconSrc ? <HarmonyIcon src={cmdIconSrc} alt={action.command} size={28} /> : <BoltIcon fontSize="small" color="primary" />
                                                 )}
                                                 <Typography variant="body2" fontWeight={500} sx={{ minWidth: 50 }}>
                                                     {I18n.t('step')} {i + 1}
@@ -958,7 +960,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
                                                             {allDevices.map((dev) => (
                                                                 <MenuItem key={dev.id} value={dev.id}>
                                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                        <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={18} />
+                                                                        <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={32} />
                                                                         {dev.label}
                                                                     </Box>
                                                                 </MenuItem>
@@ -1026,7 +1028,7 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, hu
     return (
         <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <HarmonyIcon src={getActivityIconSrc(activity.type)} alt={activity.label} size={36} />
+                <HarmonyIcon src={getActivityIconSrc(activity.type)} alt={activity.label} size={44} />
                 <Typography variant="h6">
                     {activity.label}
                 </Typography>
@@ -1110,7 +1112,7 @@ function PowerTimeline({ title, actions }: PowerTimelineProps): React.JSX.Elemen
                                     <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             {isIR ? (
-                                                cmdIconSrc ? <HarmonyIcon src={cmdIconSrc} alt={action.IRCommandName || ''} size={20} /> : <BoltIcon fontSize="small" color="primary" />
+                                                cmdIconSrc ? <HarmonyIcon src={cmdIconSrc} alt={action.IRCommandName || ''} size={28} /> : <BoltIcon fontSize="small" color="primary" />
                                             ) : (
                                                 <TimerIcon fontSize="small" color="warning" />
                                             )}

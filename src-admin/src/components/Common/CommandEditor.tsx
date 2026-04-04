@@ -43,6 +43,7 @@ interface CommandEditorProps {
     allDevices: HarmonyDevice[];
     hubName: string;
     testCommand?: (hubName: string, deviceId: string, command: string) => Promise<{ success: boolean }>;
+    sendCommand?: <T>(command: string, payload?: unknown) => Promise<{ success: boolean; data?: T; error?: string }>;
     onSave: (command: CommandFunction) => void;
     onClose: () => void;
 }
@@ -83,6 +84,7 @@ export function CommandEditor({
     allDevices,
     hubName,
     testCommand,
+    sendCommand,
     onSave,
     onClose,
 }: CommandEditorProps): React.JSX.Element {
@@ -226,7 +228,7 @@ export function CommandEditor({
                 {allDevices.map((dev) => (
                     <MenuItem key={dev.id} value={dev.id}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={20} />
+                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={28} />
                             {dev.label}
                             <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
                                 {dev.manufacturer} {dev.model}
@@ -262,7 +264,7 @@ export function CommandEditor({
                                         >
                                             <TableCell sx={{ width: 32, px: 1 }}>
                                                 {cmdIconSrc ? (
-                                                    <HarmonyIcon src={cmdIconSrc} alt={fn.name} size={18} />
+                                                    <HarmonyIcon src={cmdIconSrc} alt={fn.name} size={24} />
                                                 ) : (
                                                     <BoltIcon fontSize="small" color="disabled" />
                                                 )}
@@ -304,7 +306,11 @@ export function CommandEditor({
     // ---- Tab 2: IR Database ----
     const renderIRDatabase = (): React.JSX.Element => (
         <Box>
-            <IRDBSearch onSelectCodeSet={handleIRDBCodeSetSelected} />
+            {sendCommand ? (
+                <IRDBSearch onSelectCodeSet={handleIRDBCodeSetSelected} sendCommand={sendCommand} />
+            ) : (
+                <Alert severity="warning">IRDB search requires a connection to the adapter.</Alert>
+            )}
 
             {irdbMeta && irdbCodes.length > 0 && (
                 <Box sx={{ mt: 2 }}>

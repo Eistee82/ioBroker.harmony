@@ -128,7 +128,7 @@ export function TreeNav({ hubs, selection, onSelect }: TreeNavProps): React.JSX.
                                         sx={{ pl: 7 }}
                                     >
                                         <ListItemIcon sx={{ minWidth: 36 }}>
-                                            <HarmonyIcon src={getActivityIconSrc(act.type)} alt={act.label} size={28} />
+                                            <HarmonyIcon src={getActivityIconSrc(act.type)} alt={act.label} size={32} />
                                         </ListItemIcon>
                                         <ListItemText
                                             primary={act.label}
@@ -163,7 +163,7 @@ export function TreeNav({ hubs, selection, onSelect }: TreeNavProps): React.JSX.
                                         sx={{ pl: 7 }}
                                     >
                                         <ListItemIcon sx={{ minWidth: 36 }}>
-                                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={28} />
+                                            <HarmonyIcon src={getDeviceIconSrc(dev.type)} alt={dev.label} size={32} />
                                         </ListItemIcon>
                                         <ListItemText
                                             primary={dev.label}
