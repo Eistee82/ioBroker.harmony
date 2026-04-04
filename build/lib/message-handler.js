@@ -105,6 +105,39 @@ class MessageHandler {
                 case 'runSequence':
                     response = await this.runSequence(obj.message);
                     break;
+                case 'startIRCapture':
+                    response = await this.startIRCapture(obj.message);
+                    break;
+                case 'stopIRCapture':
+                    response = await this.stopIRCapture(obj.message);
+                    break;
+                case 'startNetworkScan':
+                    response = await this.startNetworkScan(obj.message);
+                    break;
+                case 'pollNetworkScan':
+                    response = await this.pollNetworkScan(obj.message);
+                    break;
+                case 'getScanResults':
+                    response = await this.getScanResults(obj.message);
+                    break;
+                case 'stopNetworkScan':
+                    response = await this.stopNetworkScan(obj.message);
+                    break;
+                case 'btDisconnect':
+                    response = await this.btDisconnect(obj.message);
+                    break;
+                case 'btUnpair':
+                    response = await this.btUnpair(obj.message);
+                    break;
+                case 'automationDiscover':
+                    response = await this.automationDiscover(obj.message);
+                    break;
+                case 'automationIdentify':
+                    response = await this.automationIdentify(obj.message);
+                    break;
+                case 'powerOnAllDevices':
+                    response = await this.powerOnAllDevices(obj.message);
+                    break;
                 case 'searchIRDB':
                     response = await this.searchIRDB(obj.message);
                     break;
@@ -346,6 +379,133 @@ class MessageHandler {
         catch (e) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
+        }
+    }
+    // ---- IR Learning ----
+    async startIRCapture(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'ir.cap', {});
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    async stopIRCapture(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'ir.abort', {});
+            return { success: true, data: result };
+        }
+        catch {
+            // 404 means nothing to abort - that's OK
+            return { success: true, data: { stopped: true } };
+        }
+    }
+    // ---- Network Scanner (SSDP) ----
+    async startNetworkScan(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?startbgndscan', {});
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    async pollNetworkScan(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?pollbgndscan', {});
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    async getScanResults(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?lastscanresults', {}, 15000);
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    async stopNetworkScan(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?stopbgndscan', {});
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    // ---- Bluetooth ----
+    async btDisconnect(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName) || !(msg === null || msg === void 0 ? void 0 : msg.deviceId))
+            return { success: false, error: 'hubName and deviceId required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?bluetoothDisconnect', { deviceId: msg.deviceId });
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    async btUnpair(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName) || !(msg === null || msg === void 0 ? void 0 : msg.deviceId))
+            return { success: false, error: 'hubName and deviceId required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?bluetoothUnPairing', { deviceId: msg.deviceId });
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    // ---- Automation ----
+    async automationDiscover(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.automation?discover', {}, 30000);
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    async automationIdentify(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName) || !(msg === null || msg === void 0 ? void 0 : msg.deviceId))
+            return { success: false, error: 'hubName and deviceId required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.automation?identify', { deviceId: msg.deviceId });
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    // ---- Power ----
+    async powerOnAllDevices(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
+            return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?allpoweron', {}, 30000);
+            return { success: true, data: result };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
         }
     }
     async testCommand(msg) {

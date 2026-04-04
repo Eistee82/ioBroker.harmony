@@ -22,6 +22,7 @@ import { SequenceList } from './Sequence/SequenceList';
 import { SequenceEditor } from './Sequence/SequenceEditor';
 import { HubSettings } from './Hub/HubSettings';
 import { AutomationPanel } from './Automation/AutomationPanel';
+import { NetworkScanner } from './Hub/NetworkScanner';
 import { SetupWizard } from './Device/SetupWizard';
 import { CreateActivityDialog } from './Activity/CreateActivityDialog';
 import { ConfigToolbar } from './Config/ConfigToolbar';
@@ -516,6 +517,14 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
             case 'automation':
                 return (
                     <AutomationPanel
+                        hubName={selection.hubName}
+                        sendCommand={sendCommand}
+                    />
+                );
+
+            case 'networkScanner':
+                return (
+                    <NetworkScanner
                         hubName={selection.hubName}
                         sendCommand={sendCommand}
                     />

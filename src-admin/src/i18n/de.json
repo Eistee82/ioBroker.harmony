@@ -193,5 +193,18 @@
   "wifiNetworks": "WLAN-Netzwerke",
   "bluetoothDevices": "Bluetooth-Geräte",
   "rfDevices": "RF-Geräte (Fernbedienung)",
-  "channelRequiresActivity": "Starte zuerst eine Aktivität um den Kanal zu wechseln."
+  "channelRequiresActivity": "Starte zuerst eine Aktivität um den Kanal zu wechseln.",
+  "irLearning": "IR-Lernen",
+  "irLearningDesc": "Richte deine Original-Fernbedienung auf den Harmony Hub und drücke einen Knopf um den IR-Code zu erfassen.",
+  "startCapture": "Aufnahme starten",
+  "stopCapture": "Stoppen & Speichern",
+  "irCapturing": "IR-Signal wird erfasst...",
+  "irCapturingDesc": "Drücke jetzt einen Knopf auf deiner Fernbedienung.",
+  "capturedCodes": "Erfasste Codes",
+  "networkScanner": "Netzwerk-Scanner",
+  "scanNetwork": "Netzwerk scannen",
+  "stopScan": "Scan stoppen",
+  "scanning": "Scanne",
+  "scanNetworkDesc": "Scanne das lokale Netzwerk nach IP-steuerbaren Geräten (TVs, Receiver, Konsolen).",
+  "identify": "Identifizieren (blinken)"
 }

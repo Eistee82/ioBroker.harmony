@@ -193,5 +193,18 @@
   "wifiNetworks": "WiFi Networks",
   "bluetoothDevices": "Bluetooth Devices",
   "rfDevices": "RF Devices (Remote)",
-  "channelRequiresActivity": "Start an activity first to change channels."
+  "channelRequiresActivity": "Start an activity first to change channels.",
+  "irLearning": "IR Learning",
+  "irLearningDesc": "Point your original remote at the Harmony Hub and press a button to capture its IR code.",
+  "startCapture": "Start Capture",
+  "stopCapture": "Stop & Save",
+  "irCapturing": "Capturing IR signal...",
+  "irCapturingDesc": "Press a button on your remote now.",
+  "capturedCodes": "Captured Codes",
+  "networkScanner": "Network Scanner",
+  "scanNetwork": "Scan Network",
+  "stopScan": "Stop Scan",
+  "scanning": "Scanning",
+  "scanNetworkDesc": "Scan the local network for IP-controllable devices (TVs, receivers, consoles).",
+  "identify": "Identify (flash)"
 }

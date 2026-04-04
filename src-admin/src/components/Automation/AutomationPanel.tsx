@@ -8,6 +8,7 @@ import Grid2 from '@mui/material/Grid2';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import TheaterComedyIcon from '@mui/icons-material/TheaterComedy';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
 import { I18n } from '@iobroker/adapter-react-v5';
 
 interface AutomationDevice {
@@ -144,6 +145,14 @@ export function AutomationPanel({ hubName, sendCommand }: AutomationPanelProps):
                                             <Typography variant="subtitle2" fontWeight={600} sx={{ flex: 1 }}>
                                                 {dev.friendlyName}
                                             </Typography>
+                                            <Tooltip title={I18n.t('identify')}>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={(): void => { void sendCommand('automationIdentify', { hubName, deviceId: dev.id }); }}
+                                                >
+                                                    <FlashOnIcon fontSize="small" color="warning" />
+                                                </IconButton>
+                                            </Tooltip>
                                         </Box>
                                         <FormControlLabel
                                             control={

@@ -16,6 +16,7 @@ import DevicesIcon from '@mui/icons-material/Devices';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HomeIcon from '@mui/icons-material/Home';
+import WifiIcon from '@mui/icons-material/Wifi';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import { I18n } from '@iobroker/adapter-react-v5';
@@ -33,7 +34,8 @@ export type TreeSelection =
     | { type: 'device'; hubName: string; deviceId: string }
     | { type: 'sequenceList'; hubName: string }
     | { type: 'sequence'; hubName: string; sequenceId: number }
-    | { type: 'automation'; hubName: string };
+    | { type: 'automation'; hubName: string }
+    | { type: 'networkScanner'; hubName: string };
 
 interface TreeNavProps {
     hubs: Array<{ name: string; friendlyName: string; connected: boolean; config: HarmonyConfig | null }>;
@@ -206,6 +208,21 @@ export function TreeNav({ hubs, selection, onSelect }: TreeNavProps): React.JSX.
                                         />
                                     </ListItemButton>
                                 ))}
+
+                                {/* Network Scanner */}
+                                <ListItemButton
+                                    selected={isSelected(selection, { type: 'networkScanner', hubName: hub.name })}
+                                    onClick={(): void => onSelect({ type: 'networkScanner', hubName: hub.name })}
+                                    sx={{ pl: 4 }}
+                                >
+                                    <ListItemIcon sx={{ minWidth: 28 }}>
+                                        <WifiIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary={I18n.t('networkScanner')}
+                                        primaryTypographyProps={{ fontWeight: 500, fontSize: 13 }}
+                                    />
+                                </ListItemButton>
 
                                 {/* Hub Settings */}
                                 <ListItemButton

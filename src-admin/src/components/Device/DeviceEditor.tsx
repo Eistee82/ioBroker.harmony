@@ -37,6 +37,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 // ExpandMore no longer needed - commands use table view
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import BoltIcon from '@mui/icons-material/Bolt';
 import TimerIcon from '@mui/icons-material/Timer';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -45,6 +46,7 @@ import { I18n } from '@iobroker/adapter-react-v5';
 import type { HarmonyDevice, HarmonyActivity, PowerAction, CommandFunction } from '../../types/harmony';
 import { IconPicker, getIconById, getIconSrc } from '../Common/IconPicker';
 import { CommandEditor } from '../Common/CommandEditor';
+import { IRLearningDialog } from '../IRDB/IRLearningDialog';
 import { getDeviceIconSrc } from '../../utils/deviceTypes';
 import { getRoleLabel } from '../../utils/activityTypes';
 import { getCommandIconSrc } from '../../utils/commandIcons';
@@ -77,6 +79,7 @@ export function DeviceEditor({ device, allActivities, onUpdate, testCommand, sen
     const [commandEditorOpen, setCommandEditorOpen] = useState(false);
     const [commandEditorTarget, setCommandEditorTarget] = useState<{ groupIdx: number; funcIdx: number | null; command: CommandFunction | null } | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<{ groupIdx: number; funcIdx: number } | null>(null);
+    const [irLearningOpen, setIrLearningOpen] = useState(false);
 
     const handleField = <K extends keyof HarmonyDevice>(key: K, value: HarmonyDevice[K]): void => {
         onUpdate({ ...device, [key]: value });
@@ -414,6 +417,19 @@ export function DeviceEditor({ device, allActivities, onUpdate, testCommand, sen
                         No commands defined for this device.
                     </Typography>
                 )}
+                <Box sx={{ mt: 1 }}>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        startIcon={<FiberManualRecordIcon />}
+                        onClick={(): void => setIrLearningOpen(true)}
+                        sx={{ ml: 1 }}
+                        disabled={!sendCommand}
+                    >
+                        {I18n.t('irLearning')}
+                    </Button>
+                </Box>
 
                 {/* Delete confirmation dialog */}
                 <Dialog open={!!confirmDelete} onClose={(): void => setConfirmDelete(null)}>
@@ -445,6 +461,14 @@ export function DeviceEditor({ device, allActivities, onUpdate, testCommand, sen
                     sendCommand={sendCommand}
                     onSave={handleCommandEditorSave}
                     onClose={(): void => { setCommandEditorOpen(false); setCommandEditorTarget(null); }}
+                />
+
+                {/* IR Learning Dialog */}
+                <IRLearningDialog
+                    open={irLearningOpen}
+                    hubName={hubName || ''}
+                    sendCommand={sendCommand!}
+                    onClose={(): void => setIrLearningOpen(false)}
                 />
             </Box>
         );

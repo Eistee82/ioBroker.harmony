@@ -132,6 +132,39 @@ export class MessageHandler {
                 case 'runSequence':
                     response = await this.runSequence(obj.message as { hubName: string; actions: Array<{ deviceId: string; command: string; duration: number; delay: number }> });
                     break;
+                case 'startIRCapture':
+                    response = await this.startIRCapture(obj.message as { hubName: string });
+                    break;
+                case 'stopIRCapture':
+                    response = await this.stopIRCapture(obj.message as { hubName: string });
+                    break;
+                case 'startNetworkScan':
+                    response = await this.startNetworkScan(obj.message as { hubName: string });
+                    break;
+                case 'pollNetworkScan':
+                    response = await this.pollNetworkScan(obj.message as { hubName: string });
+                    break;
+                case 'getScanResults':
+                    response = await this.getScanResults(obj.message as { hubName: string });
+                    break;
+                case 'stopNetworkScan':
+                    response = await this.stopNetworkScan(obj.message as { hubName: string });
+                    break;
+                case 'btDisconnect':
+                    response = await this.btDisconnect(obj.message as { hubName: string; deviceId: string });
+                    break;
+                case 'btUnpair':
+                    response = await this.btUnpair(obj.message as { hubName: string; deviceId: string });
+                    break;
+                case 'automationDiscover':
+                    response = await this.automationDiscover(obj.message as { hubName: string });
+                    break;
+                case 'automationIdentify':
+                    response = await this.automationIdentify(obj.message as { hubName: string; deviceId: string });
+                    break;
+                case 'powerOnAllDevices':
+                    response = await this.powerOnAllDevices(obj.message as { hubName: string });
+                    break;
                 case 'searchIRDB':
                     response = await this.searchIRDB(obj.message as { query: string });
                     break;
@@ -360,6 +393,127 @@ export class MessageHandler {
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
+        }
+    }
+
+    // ---- IR Learning ----
+
+    private async startIRCapture(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'ir.cap', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async stopIRCapture(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'ir.abort', {});
+            return { success: true, data: result };
+        } catch {
+            // 404 means nothing to abort - that's OK
+            return { success: true, data: { stopped: true } };
+        }
+    }
+
+    // ---- Network Scanner (SSDP) ----
+
+    private async startNetworkScan(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?startbgndscan', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async pollNetworkScan(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?pollbgndscan', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async getScanResults(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?lastscanresults', {}, 15000);
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async stopNetworkScan(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.ssdp?stopbgndscan', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    // ---- Bluetooth ----
+
+    private async btDisconnect(msg: { hubName: string; deviceId: string }): Promise<MessageResponse> {
+        if (!msg?.hubName || !msg?.deviceId) return { success: false, error: 'hubName and deviceId required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?bluetoothDisconnect', { deviceId: msg.deviceId });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async btUnpair(msg: { hubName: string; deviceId: string }): Promise<MessageResponse> {
+        if (!msg?.hubName || !msg?.deviceId) return { success: false, error: 'hubName and deviceId required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?bluetoothUnPairing', { deviceId: msg.deviceId });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    // ---- Automation ----
+
+    private async automationDiscover(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.automation?discover', {}, 30000);
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async automationIdentify(msg: { hubName: string; deviceId: string }): Promise<MessageResponse> {
+        if (!msg?.hubName || !msg?.deviceId) return { success: false, error: 'hubName and deviceId required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.automation?identify', { deviceId: msg.deviceId });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    // ---- Power ----
+
+    private async powerOnAllDevices(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?allpoweron', {}, 30000);
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
         }
     }
 
