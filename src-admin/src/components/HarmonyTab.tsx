@@ -22,6 +22,8 @@ import { SequenceList } from './Sequence/SequenceList';
 import { SequenceEditor } from './Sequence/SequenceEditor';
 import { HubSettings } from './Hub/HubSettings';
 import { AutomationPanel } from './Automation/AutomationPanel';
+import { SetupWizard } from './Device/SetupWizard';
+import { CreateActivityDialog } from './Activity/CreateActivityDialog';
 import { ConfigToolbar } from './Config/ConfigToolbar';
 import { UnsavedBanner } from './Config/UnsavedBanner';
 import { exportConfig, triggerImport } from './Config/ExportImport';
@@ -53,6 +55,8 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
     const [error, setError] = useState<string | null>(null);
     const [activeHub, setActiveHub] = useState<string | null>(null);
     const [currentActivityId, setCurrentActivityId] = useState<string>('-1');
+    const [setupWizardOpen, setSetupWizardOpen] = useState(false);
+    const [createActivityOpen, setCreateActivityOpen] = useState(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false, message: '', severity: 'success',
     });
@@ -271,9 +275,34 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
     }, [activeHub, sendCommand]);
 
     const handleAddDevice = useCallback((): void => {
-        // TODO: Open SetupWizard dialog for adding a new device
-        setSnackbar({ open: true, message: 'Device setup wizard coming soon - use Harmony app to add devices for now', severity: 'info' as 'success' });
+        setSetupWizardOpen(true);
     }, []);
+
+    const handleSetupWizardComplete = useCallback(async (deviceDef: { name: string; type: string; manufacturer: string; deviceType: string; model: string; codes: Array<{ name: string; functionCode: string }> }): Promise<void> => {
+        if (!activeHub) return;
+        setSetupWizardOpen(false);
+        const resp = await sendCommand<unknown>('addDevice', {
+            hubName: activeHub,
+            device: {
+                label: deviceDef.name,
+                type: deviceDef.type,
+                manufacturer: deviceDef.manufacturer,
+                model: deviceDef.model,
+                deviceType: deviceDef.deviceType,
+            },
+        });
+        if (resp.success) {
+            setSnackbar({ open: true, message: 'Device added - refreshing config...', severity: 'success' });
+            // Refresh config to get the new device
+            const configResp = await sendCommand<HarmonyConfig>('getConfig', { hubName: activeHub });
+            if (configResp.success && configResp.data) {
+                setConfigs((prev) => ({ ...prev, [activeHub]: configResp.data as HarmonyConfig }));
+                configState.loadConfig(configResp.data);
+            }
+        } else {
+            setSnackbar({ open: true, message: 'Add device failed: ' + (resp.error || ''), severity: 'error' });
+        }
+    }, [activeHub, sendCommand, configState]);
 
     const handleDeleteDevice = useCallback(async (deviceId: string): Promise<void> => {
         if (!activeHub) return;
@@ -290,9 +319,32 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
     }, [activeHub, sendCommand, configState]);
 
     const handleAddActivity = useCallback((): void => {
-        // TODO: Open activity creation dialog
-        setSnackbar({ open: true, message: 'Activity creation wizard coming soon - use Harmony app to create activities for now', severity: 'info' as 'success' });
+        setCreateActivityOpen(true);
     }, []);
+
+    const handleCreateActivityComplete = useCallback(async (activityDef: { name: string; type: string; devices: Array<{ deviceId: string; role: string }> }): Promise<void> => {
+        if (!activeHub) return;
+        setCreateActivityOpen(false);
+        const resp = await sendCommand<unknown>('generateActivity', {
+            hubName: activeHub,
+            activityDef: {
+                label: activityDef.name,
+                type: activityDef.type,
+                isAVActivity: true,
+                devices: activityDef.devices,
+            },
+        });
+        if (resp.success) {
+            setSnackbar({ open: true, message: 'Activity created - refreshing config...', severity: 'success' });
+            const configResp = await sendCommand<HarmonyConfig>('getConfig', { hubName: activeHub });
+            if (configResp.success && configResp.data) {
+                setConfigs((prev) => ({ ...prev, [activeHub]: configResp.data as HarmonyConfig }));
+                configState.loadConfig(configResp.data);
+            }
+        } else {
+            setSnackbar({ open: true, message: 'Create activity failed: ' + (resp.error || ''), severity: 'error' });
+        }
+    }, [activeHub, sendCommand, configState]);
 
     const handleStartActivity = useCallback(async (activityId: string): Promise<void> => {
         if (!activeHub) return;
@@ -565,6 +617,22 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+            {setupWizardOpen && activeHub && (
+                <SetupWizard
+                    hubName={activeHub}
+                    sendCommand={sendCommand}
+                    onComplete={(def): void => { void handleSetupWizardComplete(def); }}
+                    onCancel={(): void => setSetupWizardOpen(false)}
+                />
+            )}
+            {createActivityOpen && activeHub && currentConfig && (
+                <CreateActivityDialog
+                    open={createActivityOpen}
+                    allDevices={currentConfig.device || []}
+                    onClose={(): void => setCreateActivityOpen(false)}
+                    onCreate={(def): void => { void handleCreateActivityComplete(def); }}
+                />
+            )}
         </>
     );
 }

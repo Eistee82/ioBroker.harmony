@@ -180,5 +180,7 @@
   "tuningDefault": "Standard-Tuning",
   "multiZone": "Multi-Zone",
   "noInput": "Kein Eingang",
-  "runSequence": "Sequenz ausführen"
+  "runSequence": "Sequenz ausführen",
+  "createActivity": "Aktivität erstellen",
+  "selectDevicesForActivity": "Geräte für diese Aktivität auswählen und Rollen zuweisen."
 }
