@@ -445,9 +445,10 @@ export function HubOverview({
                 <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
                     <SectionCard title={I18n.t('bluetoothDevices')}>
                         {Object.keys(btDevices).length > 0 ? (
-                            Object.entries(btDevices).map(([id, mac]) => (
-                                kvRow(id, <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{mac}</Typography>)
-                            ))
+                            Object.entries(btDevices).map(([id, mac]) => {
+                                const deviceName = devices.find((d) => String(d.id) === id)?.label || id;
+                                return kvRow(deviceName, <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{mac}</Typography>);
+                            })
                         ) : kvRow(I18n.t('noDevices'), '-')}
                     </SectionCard>
                 </Grid2>
