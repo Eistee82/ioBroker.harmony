@@ -114,11 +114,9 @@ class ConfigWriter {
                         if (error) {
                             reject(new Error(`Hub error for '${cmd}': ${JSON.stringify(error)}`));
                         }
-                        else if ((data === null || data === void 0 ? void 0 : data.code) && data.code !== 200 && data.code !== '200') {
-                            reject(new Error(`Hub error for '${cmd}': code ${data.code} - ${data.msg || ''}`));
-                        }
                         else {
-                            // Return the data payload (direct format has 'data' field)
+                            // Return the data payload - include even for non-200 codes
+                            // (e.g. firmware check returns code 1001 but still has useful data)
                             resolve((_d = (_c = data === null || data === void 0 ? void 0 : data.data) !== null && _c !== void 0 ? _c : data === null || data === void 0 ? void 0 : data.hbus) !== null && _d !== void 0 ? _d : data);
                         }
                     }

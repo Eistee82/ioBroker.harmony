@@ -119,10 +119,9 @@ export class ConfigWriter {
                         const error = data?.hbus?.error;
                         if (error) {
                             reject(new Error(`Hub error for '${cmd}': ${JSON.stringify(error)}`));
-                        } else if (data?.code && data.code !== 200 && data.code !== '200') {
-                            reject(new Error(`Hub error for '${cmd}': code ${data.code} - ${data.msg || ''}`));
                         } else {
-                            // Return the data payload (direct format has 'data' field)
+                            // Return the data payload - include even for non-200 codes
+                            // (e.g. firmware check returns code 1001 but still has useful data)
                             resolve(data?.data ?? data?.hbus ?? data);
                         }
                     }
