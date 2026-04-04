@@ -24,6 +24,7 @@ import { HubSettings } from './Hub/HubSettings';
 import { AutomationPanel } from './Automation/AutomationPanel';
 import { NetworkScanner } from './Hub/NetworkScanner';
 import { SetupWizard } from './Device/SetupWizard';
+import { IRLearningDialog } from './IRDB/IRLearningDialog';
 import { CreateActivityDialog } from './Activity/CreateActivityDialog';
 import { ConfigToolbar } from './Config/ConfigToolbar';
 import { UnsavedBanner } from './Config/UnsavedBanner';
@@ -57,6 +58,7 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
     const [activeHub, setActiveHub] = useState<string | null>(null);
     const [currentActivityId, setCurrentActivityId] = useState<string>('-1');
     const [setupWizardOpen, setSetupWizardOpen] = useState(false);
+    const [irLearningOpen, setIrLearningOpen] = useState(false);
     const [createActivityOpen, setCreateActivityOpen] = useState(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false, message: '', severity: 'success',
@@ -452,6 +454,7 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         onSelectDevice={(id): void => setSelection({ type: 'device', hubName: selection.hubName, deviceId: id })}
                         onAddDevice={handleAddDevice}
                         onDeleteDevice={handleDeleteDevice}
+                        onIRLearn={(): void => setIrLearningOpen(true)}
                     />
                 );
 
@@ -639,6 +642,17 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                     allDevices={currentConfig.device || []}
                     onClose={(): void => setCreateActivityOpen(false)}
                     onCreate={(def): void => { void handleCreateActivityComplete(def); }}
+                />
+            )}
+            {irLearningOpen && activeHub && (
+                <IRLearningDialog
+                    open={irLearningOpen}
+                    hubName={activeHub}
+                    sendCommand={sendCommand}
+                    onClose={(): void => setIrLearningOpen(false)}
+                    onDeviceIdentified={(dev): void => {
+                        setSnackbar({ open: true, message: `Device identified: ${dev.manufacturer} ${dev.deviceType}`, severity: 'success' });
+                    }}
                 />
             )}
         </>

@@ -215,5 +215,6 @@
   "pressAnotherButton": "Drücke eine weitere Taste auf deiner Fernbedienung um die Ergebnisse einzugrenzen:",
   "captureAnother": "Weitere Taste erfassen",
   "matchedFunctions": "Erkannte Funktionen",
-  "confidence": "Konfidenz"
+  "confidence": "Konfidenz",
+  "irFindDevice": "Gerät per IR finden"
 }

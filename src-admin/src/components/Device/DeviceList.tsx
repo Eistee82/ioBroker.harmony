@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { I18n } from '@iobroker/adapter-react-v5';
 import type { HarmonyDevice } from '../../types/harmony';
 import { getDeviceIconSrc } from '../../utils/deviceTypes';
@@ -29,6 +30,7 @@ interface DeviceListProps {
     onSelectDevice: (id: string) => void;
     onAddDevice?: () => void;
     onDeleteDevice?: (id: string) => void;
+    onIRLearn?: () => void;
 }
 
 function transportLabel(transport: number): string {
@@ -40,7 +42,7 @@ function transportLabel(transport: number): string {
     }
 }
 
-export function DeviceList({ devices, onSelectDevice, onAddDevice, onDeleteDevice }: DeviceListProps): React.JSX.Element {
+export function DeviceList({ devices, onSelectDevice, onAddDevice, onDeleteDevice, onIRLearn }: DeviceListProps): React.JSX.Element {
     const [confirmDelete, setConfirmDelete] = React.useState<{ id: string; label: string } | null>(null);
 
     return (
@@ -49,11 +51,18 @@ export function DeviceList({ devices, onSelectDevice, onAddDevice, onDeleteDevic
                 <Typography variant="h6">
                     {I18n.t('devices')} ({devices.length})
                 </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                {onIRLearn && (
+                    <Button size="small" variant="outlined" color="error" startIcon={<FiberManualRecordIcon />} onClick={onIRLearn}>
+                        {I18n.t('irFindDevice')}
+                    </Button>
+                )}
                 {onAddDevice && (
                     <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onAddDevice}>
                         {I18n.t('addDevice')}
                     </Button>
                 )}
+                </Box>
             </Box>
             {devices.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>

@@ -215,5 +215,6 @@
   "pressAnotherButton": "Press another button on your remote to narrow down the results:",
   "captureAnother": "Capture Another Button",
   "matchedFunctions": "Matched functions",
-  "confidence": "confidence"
+  "confidence": "confidence",
+  "irFindDevice": "Find Device by IR"
 }
