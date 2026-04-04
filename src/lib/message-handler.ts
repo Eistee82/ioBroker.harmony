@@ -1,6 +1,8 @@
 import type { MessageResponse, HarmonyHubInfo } from './types.js';
 import { ConfigWriter } from './config-writer.js';
 import { IRDBService } from './irdb-service.js';
+import { decodeIR, parseHarmonyIRData } from './ir-decoder.js';
+import { lookupIRCode, narrowCandidates, type IRDBMatch } from './irdb-lookup.js';
 
 export class MessageHandler {
     private adapter: any;
@@ -164,6 +166,12 @@ export class MessageHandler {
                     break;
                 case 'powerOnAllDevices':
                     response = await this.powerOnAllDevices(obj.message as { hubName: string });
+                    break;
+                case 'decodeIRCapture':
+                    response = await this.decodeIRCapture(obj.message as { rawData: string });
+                    break;
+                case 'identifyDevice':
+                    response = await this.identifyDevice(obj.message as { captures: string[] });
                     break;
                 case 'searchIRDB':
                     response = await this.searchIRDB(obj.message as { query: string });
@@ -393,6 +401,59 @@ export class MessageHandler {
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
+        }
+    }
+
+    // ---- IR Decoding & Device Identification ----
+
+    private async decodeIRCapture(msg: { rawData: string }): Promise<MessageResponse> {
+        if (!msg?.rawData) return { success: false, error: 'rawData required' };
+        try {
+            const timings = parseHarmonyIRData(msg.rawData);
+            if (timings.length < 10) {
+                return { success: false, error: 'Not enough IR data captured' };
+            }
+            const decoded = decodeIR(timings);
+            if (!decoded) {
+                return { success: true, data: { decoded: null, timings: timings.length, message: 'Unknown IR protocol' } };
+            }
+            // Look up in irdb
+            const matches = await lookupIRCode(
+                decoded.protocol, decoded.device, decoded.subdevice, decoded.function,
+                (m) => this.adapter.log.debug(`IRDB: ${m}`),
+            );
+            return {
+                success: true,
+                data: {
+                    decoded,
+                    matches,
+                    candidateCount: new Set(matches.map((m) => `${m.manufacturer}|${m.deviceType}`)).size,
+                },
+            };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    private async identifyDevice(msg: { captures: string[] }): Promise<MessageResponse> {
+        if (!msg?.captures?.length) return { success: false, error: 'captures required' };
+        try {
+            const allMatches: IRDBMatch[][] = [];
+            for (const raw of msg.captures) {
+                const timings = parseHarmonyIRData(raw);
+                const decoded = decodeIR(timings);
+                if (decoded) {
+                    const matches = await lookupIRCode(
+                        decoded.protocol, decoded.device, decoded.subdevice, decoded.function,
+                        (m) => this.adapter.log.debug(`IRDB: ${m}`),
+                    );
+                    allMatches.push(matches);
+                }
+            }
+            const candidates = narrowCandidates(allMatches);
+            return { success: true, data: { candidates, capturesDecoded: allMatches.length } };
+        } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
         }
     }
 

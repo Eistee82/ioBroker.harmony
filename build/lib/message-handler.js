@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessageHandler = void 0;
 const config_writer_js_1 = require("./config-writer.js");
 const irdb_service_js_1 = require("./irdb-service.js");
+const ir_decoder_js_1 = require("./ir-decoder.js");
+const irdb_lookup_js_1 = require("./irdb-lookup.js");
 class MessageHandler {
     constructor(adapter) {
         this.adapter = adapter;
@@ -137,6 +139,12 @@ class MessageHandler {
                     break;
                 case 'powerOnAllDevices':
                     response = await this.powerOnAllDevices(obj.message);
+                    break;
+                case 'decodeIRCapture':
+                    response = await this.decodeIRCapture(obj.message);
+                    break;
+                case 'identifyDevice':
+                    response = await this.identifyDevice(obj.message);
                     break;
                 case 'searchIRDB':
                     response = await this.searchIRDB(obj.message);
@@ -379,6 +387,55 @@ class MessageHandler {
         catch (e) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
+        }
+    }
+    // ---- IR Decoding & Device Identification ----
+    async decodeIRCapture(msg) {
+        if (!(msg === null || msg === void 0 ? void 0 : msg.rawData))
+            return { success: false, error: 'rawData required' };
+        try {
+            const timings = (0, ir_decoder_js_1.parseHarmonyIRData)(msg.rawData);
+            if (timings.length < 10) {
+                return { success: false, error: 'Not enough IR data captured' };
+            }
+            const decoded = (0, ir_decoder_js_1.decodeIR)(timings);
+            if (!decoded) {
+                return { success: true, data: { decoded: null, timings: timings.length, message: 'Unknown IR protocol' } };
+            }
+            // Look up in irdb
+            const matches = await (0, irdb_lookup_js_1.lookupIRCode)(decoded.protocol, decoded.device, decoded.subdevice, decoded.function, (m) => this.adapter.log.debug(`IRDB: ${m}`));
+            return {
+                success: true,
+                data: {
+                    decoded,
+                    matches,
+                    candidateCount: new Set(matches.map((m) => `${m.manufacturer}|${m.deviceType}`)).size,
+                },
+            };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+    async identifyDevice(msg) {
+        var _a;
+        if (!((_a = msg === null || msg === void 0 ? void 0 : msg.captures) === null || _a === void 0 ? void 0 : _a.length))
+            return { success: false, error: 'captures required' };
+        try {
+            const allMatches = [];
+            for (const raw of msg.captures) {
+                const timings = (0, ir_decoder_js_1.parseHarmonyIRData)(raw);
+                const decoded = (0, ir_decoder_js_1.decodeIR)(timings);
+                if (decoded) {
+                    const matches = await (0, irdb_lookup_js_1.lookupIRCode)(decoded.protocol, decoded.device, decoded.subdevice, decoded.function, (m) => this.adapter.log.debug(`IRDB: ${m}`));
+                    allMatches.push(matches);
+                }
+            }
+            const candidates = (0, irdb_lookup_js_1.narrowCandidates)(allMatches);
+            return { success: true, data: { candidates, capturesDecoded: allMatches.length } };
+        }
+        catch (e) {
+            return { success: false, error: e instanceof Error ? e.message : String(e) };
         }
     }
     // ---- IR Learning ----

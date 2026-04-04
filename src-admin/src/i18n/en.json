@@ -206,5 +206,14 @@
   "stopScan": "Stop Scan",
   "scanning": "Scanning",
   "scanNetworkDesc": "Scan the local network for IP-controllable devices (TVs, receivers, consoles).",
-  "identify": "Identify (flash)"
+  "identify": "Identify (flash)",
+  "irStep1Desc": "Point your original remote at the Harmony Hub and press the button shown below.",
+  "decoded": "Decoded",
+  "searching": "Searching",
+  "deviceIdentified": "Device Identified!",
+  "multipleCandidates": "%s possible devices found. Select one or press another button to narrow down.",
+  "pressAnotherButton": "Press another button on your remote to narrow down the results:",
+  "captureAnother": "Capture Another Button",
+  "matchedFunctions": "Matched functions",
+  "confidence": "confidence"
 }

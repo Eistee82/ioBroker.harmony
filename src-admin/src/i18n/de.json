@@ -206,5 +206,14 @@
   "stopScan": "Scan stoppen",
   "scanning": "Scanne",
   "scanNetworkDesc": "Scanne das lokale Netzwerk nach IP-steuerbaren Geräten (TVs, Receiver, Konsolen).",
-  "identify": "Identifizieren (blinken)"
+  "identify": "Identifizieren (blinken)",
+  "irStep1Desc": "Richte deine Original-Fernbedienung auf den Harmony Hub und drücke den unten gezeigten Knopf.",
+  "decoded": "Dekodiert",
+  "searching": "Suche",
+  "deviceIdentified": "Gerät identifiziert!",
+  "multipleCandidates": "%s mögliche Geräte gefunden. Wähle eins oder drücke eine weitere Taste um die Auswahl einzugrenzen.",
+  "pressAnotherButton": "Drücke eine weitere Taste auf deiner Fernbedienung um die Ergebnisse einzugrenzen:",
+  "captureAnother": "Weitere Taste erfassen",
+  "matchedFunctions": "Erkannte Funktionen",
+  "confidence": "Konfidenz"
 }
