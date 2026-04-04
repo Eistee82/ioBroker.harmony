@@ -29,11 +29,11 @@ export class ConfigWriter {
      */
     private sendCommand(hubName: string, cmd: string, params: Record<string, unknown>, timeout = 30000): Promise<unknown> {
         const hub = this.adapter.hubs[hubName];
-        if (!hub?.client?._ws) {
+        if (!hub?.client?.ws) {
             return Promise.reject(new Error(`Hub not found or offline: ${hubName}`));
         }
 
-        const ws = hub.client._ws;
+        const ws = hub.client.ws;
         const id = `config-writer-${++this.msgCounter}-${Date.now()}`;
 
         return new Promise((resolve, reject) => {

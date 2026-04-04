@@ -27,10 +27,10 @@ class ConfigWriter {
     sendCommand(hubName, cmd, params, timeout = 30000) {
         var _a;
         const hub = this.adapter.hubs[hubName];
-        if (!((_a = hub === null || hub === void 0 ? void 0 : hub.client) === null || _a === void 0 ? void 0 : _a._ws)) {
+        if (!((_a = hub === null || hub === void 0 ? void 0 : hub.client) === null || _a === void 0 ? void 0 : _a.ws)) {
             return Promise.reject(new Error(`Hub not found or offline: ${hubName}`));
         }
-        const ws = hub.client._ws;
+        const ws = hub.client.ws;
         const id = `config-writer-${++this.msgCounter}-${Date.now()}`;
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
