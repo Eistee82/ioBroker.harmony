@@ -266,6 +266,44 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
         }
     }, [activeHub, sendCommand]);
 
+    const handleAddDevice = useCallback((): void => {
+        // TODO: Open SetupWizard dialog for adding a new device
+        setSnackbar({ open: true, message: 'Device setup wizard coming soon - use Harmony app to add devices for now', severity: 'info' as 'success' });
+    }, []);
+
+    const handleDeleteDevice = useCallback(async (deviceId: string): Promise<void> => {
+        if (!activeHub) return;
+        const resp = await sendCommand<unknown>('deleteDevice', { hubName: activeHub, deviceId });
+        if (resp.success) {
+            configState.updateConfig((cfg) => ({
+                ...cfg,
+                device: cfg.device.filter((d) => d.id !== deviceId),
+            }));
+            setSnackbar({ open: true, message: 'Device deleted', severity: 'success' });
+        } else {
+            setSnackbar({ open: true, message: 'Delete failed: ' + (resp.error || ''), severity: 'error' });
+        }
+    }, [activeHub, sendCommand, configState]);
+
+    const handleAddActivity = useCallback((): void => {
+        // TODO: Open activity creation dialog
+        setSnackbar({ open: true, message: 'Activity creation wizard coming soon - use Harmony app to create activities for now', severity: 'info' as 'success' });
+    }, []);
+
+    const handleDeleteActivity = useCallback(async (activityId: string): Promise<void> => {
+        if (!activeHub) return;
+        const resp = await sendCommand<unknown>('deleteActivity', { hubName: activeHub, activityId });
+        if (resp.success) {
+            configState.updateConfig((cfg) => ({
+                ...cfg,
+                activity: cfg.activity.filter((a) => a.id !== activityId),
+            }));
+            setSnackbar({ open: true, message: 'Activity deleted', severity: 'success' });
+        } else {
+            setSnackbar({ open: true, message: 'Delete failed: ' + (resp.error || ''), severity: 'error' });
+        }
+    }, [activeHub, sendCommand, configState]);
+
     const handleTestCommand = useCallback(async (hubNameArg: string, deviceId: string, command: string): Promise<{ success: boolean }> => {
         const resp = await sendCommand<unknown>('testCommand', { hubName: hubNameArg, deviceId, command });
         return { success: resp.success };
@@ -309,6 +347,8 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         onReorder={(reorderedActivities): void => {
                             configState.updateConfig((cfg) => ({ ...cfg, activity: reorderedActivities }));
                         }}
+                        onAddActivity={handleAddActivity}
+                        onDeleteActivity={handleDeleteActivity}
                     />
                 );
 
@@ -317,6 +357,8 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                     <DeviceList
                         devices={config?.device || []}
                         onSelectDevice={(id): void => setSelection({ type: 'device', hubName: selection.hubName, deviceId: id })}
+                        onAddDevice={handleAddDevice}
+                        onDeleteDevice={handleDeleteDevice}
                     />
                 );
 

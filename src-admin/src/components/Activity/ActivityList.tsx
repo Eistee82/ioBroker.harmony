@@ -11,9 +11,16 @@ import {
     IconButton,
     Chip,
     Tooltip,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { I18n } from '@iobroker/adapter-react-v5';
 import type { HarmonyActivity } from '../../types/harmony';
 import { getActivityIconSrc, getActivityTypeLabel } from '../../utils/activityTypes';
@@ -23,9 +30,12 @@ interface ActivityListProps {
     activities: HarmonyActivity[];
     onSelectActivity: (id: string) => void;
     onReorder?: (activities: HarmonyActivity[]) => void;
+    onAddActivity?: () => void;
+    onDeleteActivity?: (id: string) => void;
 }
 
-export function ActivityList({ activities, onSelectActivity, onReorder }: ActivityListProps): React.JSX.Element {
+export function ActivityList({ activities, onSelectActivity, onReorder, onAddActivity, onDeleteActivity }: ActivityListProps): React.JSX.Element {
+    const [confirmDelete, setConfirmDelete] = React.useState<{ id: string; label: string } | null>(null);
     const sorted = [...activities]
         .filter((a) => a.id !== '-1')
         .sort((a, b) => (a.activityOrder || 0) - (b.activityOrder || 0));
@@ -48,9 +58,16 @@ export function ActivityList({ activities, onSelectActivity, onReorder }: Activi
 
     return (
         <Box>
-            <Typography variant="h6" gutterBottom>
-                {I18n.t('activities')} ({sorted.length})
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6">
+                    {I18n.t('activities')} ({sorted.length})
+                </Typography>
+                {onAddActivity && (
+                    <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onAddActivity}>
+                        {I18n.t('addActivity')}
+                    </Button>
+                )}
+            </Box>
             {sorted.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
                     {I18n.t('noActivities')}
@@ -66,6 +83,7 @@ export function ActivityList({ activities, onSelectActivity, onReorder }: Activi
                                 <TableCell>{I18n.t('type')}</TableCell>
                                 <TableCell align="right">{I18n.t('devices')}</TableCell>
                                 <TableCell align="right">#</TableCell>
+                                {onDeleteActivity && <TableCell width={50} />}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -120,6 +138,19 @@ export function ActivityList({ activities, onSelectActivity, onReorder }: Activi
                                         </TableCell>
                                         <TableCell align="right">{deviceCount}</TableCell>
                                         <TableCell align="right">{act.activityOrder}</TableCell>
+                                        {onDeleteActivity && (
+                                            <TableCell align="right" onClick={(e): void => e.stopPropagation()}>
+                                                <Tooltip title={I18n.t('delete')}>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={(): void => setConfirmDelete({ id: act.id, label: act.label })}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
+                                        )}
                                     </TableRow>
                                 );
                             })}
@@ -127,6 +158,31 @@ export function ActivityList({ activities, onSelectActivity, onReorder }: Activi
                     </Table>
                 </TableContainer>
             )}
+
+            {/* Delete confirmation */}
+            <Dialog open={!!confirmDelete} onClose={(): void => setConfirmDelete(null)}>
+                <DialogTitle>{I18n.t('delete')}</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        {confirmDelete?.label}
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={(): void => setConfirmDelete(null)}>{I18n.t('cancel')}</Button>
+                    <Button
+                        color="error"
+                        variant="contained"
+                        onClick={(): void => {
+                            if (confirmDelete && onDeleteActivity) {
+                                onDeleteActivity(confirmDelete.id);
+                                setConfirmDelete(null);
+                            }
+                        }}
+                    >
+                        {I18n.t('delete')}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

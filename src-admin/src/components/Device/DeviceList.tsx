@@ -9,7 +9,16 @@ import {
     TableCell,
     TableContainer,
     Chip,
+    Button,
+    IconButton,
+    Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { I18n } from '@iobroker/adapter-react-v5';
 import type { HarmonyDevice } from '../../types/harmony';
 import { getDeviceIconSrc } from '../../utils/deviceTypes';
@@ -18,6 +27,8 @@ import { HarmonyIcon } from '../Common/HarmonyIcon';
 interface DeviceListProps {
     devices: HarmonyDevice[];
     onSelectDevice: (id: string) => void;
+    onAddDevice?: () => void;
+    onDeleteDevice?: (id: string) => void;
 }
 
 function transportLabel(transport: number): string {
@@ -29,12 +40,21 @@ function transportLabel(transport: number): string {
     }
 }
 
-export function DeviceList({ devices, onSelectDevice }: DeviceListProps): React.JSX.Element {
+export function DeviceList({ devices, onSelectDevice, onAddDevice, onDeleteDevice }: DeviceListProps): React.JSX.Element {
+    const [confirmDelete, setConfirmDelete] = React.useState<{ id: string; label: string } | null>(null);
+
     return (
         <Box>
-            <Typography variant="h6" gutterBottom>
-                {I18n.t('devices')} ({devices.length})
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6">
+                    {I18n.t('devices')} ({devices.length})
+                </Typography>
+                {onAddDevice && (
+                    <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onAddDevice}>
+                        {I18n.t('addDevice')}
+                    </Button>
+                )}
+            </Box>
             {devices.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
                     {I18n.t('noDevices')}
@@ -50,6 +70,7 @@ export function DeviceList({ devices, onSelectDevice }: DeviceListProps): React.
                                 <TableCell>{I18n.t('model')}</TableCell>
                                 <TableCell align="right">{I18n.t('commands')}</TableCell>
                                 <TableCell>{I18n.t('transport')}</TableCell>
+                                {onDeleteDevice && <TableCell width={50} />}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -88,6 +109,19 @@ export function DeviceList({ devices, onSelectDevice }: DeviceListProps): React.
                                                 variant="outlined"
                                             />
                                         </TableCell>
+                                        {onDeleteDevice && (
+                                            <TableCell align="right" onClick={(e): void => e.stopPropagation()}>
+                                                <Tooltip title={I18n.t('delete')}>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={(): void => setConfirmDelete({ id: dev.id, label: dev.label })}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
+                                        )}
                                     </TableRow>
                                 );
                             })}
@@ -95,6 +129,31 @@ export function DeviceList({ devices, onSelectDevice }: DeviceListProps): React.
                     </Table>
                 </TableContainer>
             )}
+
+            {/* Delete confirmation */}
+            <Dialog open={!!confirmDelete} onClose={(): void => setConfirmDelete(null)}>
+                <DialogTitle>{I18n.t('delete')}</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        {confirmDelete?.label}
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={(): void => setConfirmDelete(null)}>{I18n.t('cancel')}</Button>
+                    <Button
+                        color="error"
+                        variant="contained"
+                        onClick={(): void => {
+                            if (confirmDelete && onDeleteDevice) {
+                                onDeleteDevice(confirmDelete.id);
+                                setConfirmDelete(null);
+                            }
+                        }}
+                    >
+                        {I18n.t('delete')}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
