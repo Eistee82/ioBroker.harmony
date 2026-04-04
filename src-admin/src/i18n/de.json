@@ -216,5 +216,10 @@
   "captureAnother": "Weitere Taste erfassen",
   "matchedFunctions": "Erkannte Funktionen",
   "confidence": "Konfidenz",
-  "irFindDevice": "Gerät per IR finden"
+  "irFindDevice": "Gerät per IR finden",
+  "irSourceLabel": "Richte deine Fernbedienung auf:",
+  "irSourceRemote": "Harmony Remote",
+  "irSourceHub": "Harmony Hub",
+  "irPointAtRemote": "Richte deine Original-Fernbedienung auf die Harmony Remote und drücke den unten gezeigten Knopf.",
+  "irPointAtHub": "Richte deine Original-Fernbedienung auf den Harmony Hub und drücke den unten gezeigten Knopf."
 }

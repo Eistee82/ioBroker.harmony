@@ -5,6 +5,7 @@ import {
     IconButton, Chip, Divider, Stepper, Step, StepLabel,
     List, ListItem, ListItemText, ListItemIcon,
     Card, CardContent, CardActionArea,
+    ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import CloseIcon from '@mui/icons-material/Close';
@@ -13,6 +14,8 @@ import StopIcon from '@mui/icons-material/Stop';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BoltIcon from '@mui/icons-material/Bolt';
 import DevicesIcon from '@mui/icons-material/Devices';
+import RouterIcon from '@mui/icons-material/Router';
+import SettingsRemoteIcon from '@mui/icons-material/SettingsRemote';
 import { I18n } from '@iobroker/adapter-react-v5';
 
 interface DecodedIR {
@@ -49,6 +52,7 @@ const BUTTON_SUGGESTIONS = ['Power', 'Menu', 'Exit', 'Volume Up', 'Channel Up', 
 
 export function IRLearningDialog({ open, hubName, sendCommand, onClose, onDeviceIdentified }: IRLearningDialogProps): React.JSX.Element {
     const [step, setStep] = useState(0);
+    const [irSource, setIrSource] = useState<'remote' | 'hub'>('remote');
     const [capturing, setCapturing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [captures, setCaptures] = useState<string[]>([]);
@@ -141,8 +145,31 @@ export function IRLearningDialog({ open, hubName, sendCommand, onClose, onDevice
                 {/* Step 0: Capture */}
                 {step === 0 && (
                     <Box sx={{ textAlign: 'center' }}>
+                        {/* IR Source selection */}
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                {I18n.t('irSourceLabel')}
+                            </Typography>
+                            <ToggleButtonGroup
+                                value={irSource}
+                                exclusive
+                                onChange={(_, val): void => { if (val) setIrSource(val); }}
+                                size="small"
+                            >
+                                <ToggleButton value="remote">
+                                    <SettingsRemoteIcon sx={{ mr: 0.5 }} fontSize="small" />
+                                    {I18n.t('irSourceRemote')}
+                                </ToggleButton>
+                                <ToggleButton value="hub">
+                                    <RouterIcon sx={{ mr: 0.5 }} fontSize="small" />
+                                    {I18n.t('irSourceHub')}
+                                </ToggleButton>
+                            </ToggleButtonGroup>
+                        </Box>
+                        <Divider sx={{ mb: 2 }} />
+
                         <Typography variant="body1" gutterBottom>
-                            {I18n.t('irStep1Desc')}
+                            {irSource === 'remote' ? I18n.t('irPointAtRemote') : I18n.t('irPointAtHub')}
                         </Typography>
                         <Typography variant="h6" color="primary" sx={{ my: 2 }}>
                             {BUTTON_SUGGESTIONS[captureIndex] || 'Any button'}

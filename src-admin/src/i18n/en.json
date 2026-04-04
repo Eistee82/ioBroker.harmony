@@ -216,5 +216,10 @@
   "captureAnother": "Capture Another Button",
   "matchedFunctions": "Matched functions",
   "confidence": "confidence",
-  "irFindDevice": "Find Device by IR"
+  "irFindDevice": "Find Device by IR",
+  "irSourceLabel": "Point your remote at:",
+  "irSourceRemote": "Harmony Remote",
+  "irSourceHub": "Harmony Hub",
+  "irPointAtRemote": "Point your original remote at the Harmony Remote and press the button shown below.",
+  "irPointAtHub": "Point your original remote at the Harmony Hub and press the button shown below."
 }
