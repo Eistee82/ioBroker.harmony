@@ -135,7 +135,7 @@ class MessageHandler {
             return { success: false, error: 'hubName required' };
         const hub = this.adapter.hubs[msg.hubName];
         if (!(hub === null || hub === void 0 ? void 0 : hub.client))
-            return { success: false, error: `Hub not found or offline: ${msg.hubName}` };
+            return { success: false, error: `Hub client not available: ${msg.hubName}` };
         return new Promise((resolve) => {
             const timeout = setTimeout(() => {
                 resolve({ success: false, error: 'Config request timed out' });
