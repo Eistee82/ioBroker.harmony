@@ -29,8 +29,14 @@ export class ConfigWriter {
      */
     private sendCommand(hubName: string, cmd: string, params: Record<string, unknown>, timeout = 30000): Promise<unknown> {
         const hub = this.adapter.hubs[hubName];
-        if (!hub?.client?.ws) {
-            return Promise.reject(new Error(`Hub not found or offline: ${hubName}`));
+        if (!hub) {
+            return Promise.reject(new Error(`Hub not found: ${hubName} (available: ${Object.keys(this.adapter.hubs).join(', ')})`));
+        }
+        if (!hub.client) {
+            return Promise.reject(new Error(`Hub client not initialized: ${hubName}`));
+        }
+        if (!hub.client.ws) {
+            return Promise.reject(new Error(`Hub WebSocket not connected: ${hubName} (client status: ${hub.client.status})`));
         }
 
         const ws = hub.client.ws;

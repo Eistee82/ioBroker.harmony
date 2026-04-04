@@ -25,10 +25,15 @@ class ConfigWriter {
      * Send a raw command to the hub's WebSocket and wait for the matching response.
      */
     sendCommand(hubName, cmd, params, timeout = 30000) {
-        var _a;
         const hub = this.adapter.hubs[hubName];
-        if (!((_a = hub === null || hub === void 0 ? void 0 : hub.client) === null || _a === void 0 ? void 0 : _a.ws)) {
-            return Promise.reject(new Error(`Hub not found or offline: ${hubName}`));
+        if (!hub) {
+            return Promise.reject(new Error(`Hub not found: ${hubName} (available: ${Object.keys(this.adapter.hubs).join(', ')})`));
+        }
+        if (!hub.client) {
+            return Promise.reject(new Error(`Hub client not initialized: ${hubName}`));
+        }
+        if (!hub.client.ws) {
+            return Promise.reject(new Error(`Hub WebSocket not connected: ${hubName} (client status: ${hub.client.status})`));
         }
         const ws = hub.client.ws;
         const id = `config-writer-${++this.msgCounter}-${Date.now()}`;
