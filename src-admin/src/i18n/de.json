@@ -182,5 +182,8 @@
   "noInput": "Kein Eingang",
   "runSequence": "Sequenz ausführen",
   "createActivity": "Aktivität erstellen",
-  "selectDevicesForActivity": "Geräte für diese Aktivität auswählen und Rollen zuweisen."
+  "selectDevicesForActivity": "Geräte für diese Aktivität auswählen und Rollen zuweisen.",
+  "startFirmwareUpdate": "Firmware-Update starten",
+  "firmwareUpdating": "Firmware-Update wird gestartet...",
+  "firmwareUpdateStarted": "Firmware-Update gestartet. Hub startet automatisch neu."
 }

@@ -370,6 +370,24 @@ export function HubOverview({
                                                 {firmwareInfo}
                                             </Typography>
                                         )}
+                                        {firmwareInfo === I18n.t('firmwareAvailable') && (
+                                            <Button
+                                                variant="contained"
+                                                color="warning"
+                                                fullWidth
+                                                onClick={async (): Promise<void> => {
+                                                    setFirmwareInfo(I18n.t('firmwareUpdating'));
+                                                    const resp = await sendCommand<unknown>('startFirmwareUpdate', { hubName });
+                                                    if (resp.success) {
+                                                        setFirmwareInfo(I18n.t('firmwareUpdateStarted'));
+                                                    } else {
+                                                        setFirmwareInfo((resp as { error?: string }).error || 'Update failed');
+                                                    }
+                                                }}
+                                            >
+                                                {I18n.t('startFirmwareUpdate')}
+                                            </Button>
+                                        )}
                                     </>
                                 )}
                             </Box>

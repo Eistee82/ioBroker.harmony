@@ -182,5 +182,8 @@
   "noInput": "No Input",
   "runSequence": "Run Sequence",
   "createActivity": "Create Activity",
-  "selectDevicesForActivity": "Select devices for this activity and assign roles."
+  "selectDevicesForActivity": "Select devices for this activity and assign roles.",
+  "startFirmwareUpdate": "Start Firmware Update",
+  "firmwareUpdating": "Firmware update starting...",
+  "firmwareUpdateStarted": "Firmware update started. Hub will restart automatically."
 }

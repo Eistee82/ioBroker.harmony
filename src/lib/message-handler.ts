@@ -99,6 +99,9 @@ export class MessageHandler {
                 case 'checkFirmware':
                     response = await this.checkFirmware(obj.message as { hubName: string });
                     break;
+                case 'startFirmwareUpdate':
+                    response = await this.startFirmwareUpdate(obj.message as { hubName: string });
+                    break;
                 case 'getSysInfo':
                     response = await this.getSysInfo(obj.message as { hubName: string });
                     break;
@@ -211,8 +214,13 @@ export class MessageHandler {
 
         // Get full discovery info via HTTP POST (as the Harmony app does)
         try {
-            const result = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
-            return { success: true, data: result };
+            const raw = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {}) as Record<string, unknown>;
+            this.adapter.log.debug(`Discovery info raw: ${JSON.stringify(raw)}`);
+            // HTTP response may wrap data in a 'data' field
+            const data = (raw?.data ?? raw) as Record<string, unknown>;
+            // Merge hub IP since discovery may not include it
+            if (!data.ip) data.ip = hub.ip || '';
+            return { success: true, data };
         } catch {
             // Fallback to basic stored info
             return {
@@ -356,6 +364,21 @@ export class MessageHandler {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
         try {
             const result = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async startFirmwareUpdate(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        const hub = this.adapter.hubs[msg.hubName];
+        if (!hub?.client) return { success: false, error: `Hub client not available: ${msg.hubName}` };
+
+        try {
+            // Use the WebSocket command the Harmony app uses (from decompiled APK: JavaScriptInterface.java)
+            const result = await this.writer.sendHubQuery(msg.hubName, 'home.hub.firmware.startDownload', {}, 60000);
             return { success: true, data: result };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);

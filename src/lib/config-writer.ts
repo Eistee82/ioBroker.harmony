@@ -21,8 +21,8 @@ export class ConfigWriter {
     /**
      * Send a query to the hub and return the result. Used by message-handler for read operations.
      */
-    async sendHubQuery(hubName: string, cmd: string, params: Record<string, unknown>): Promise<unknown> {
-        return this.sendCommand(hubName, cmd, params, 10000);
+    async sendHubQuery(hubName: string, cmd: string, params: Record<string, unknown>, timeout = 10000): Promise<unknown> {
+        return this.sendCommand(hubName, cmd, params, timeout);
     }
 
     /**
