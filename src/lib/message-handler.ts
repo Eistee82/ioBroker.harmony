@@ -201,36 +201,28 @@ export class MessageHandler {
     private async getDiscoveryInfo(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
         const hub = this.adapter.hubs[msg.hubName];
-        if (!hub?.client) {
-            // Return basic info from stored data if client not available
-            return {
-                success: true,
-                data: {
-                    friendlyName: hub?.friendlyName || msg.hubName,
-                    ip: hub?.ip || '',
-                },
-            };
+
+        // Build combined info from all available sources
+        const info: Record<string, unknown> = {
+            friendlyName: hub?.friendlyName || msg.hubName,
+            ip: hub?.ip || '',
+        };
+
+        // Get account/provision info via HTTP POST (works without pairing, code 200)
+        if (hub?.ip) {
+            try {
+                const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {}) as Record<string, unknown>;
+                const provData = (raw?.data ?? raw) as Record<string, unknown>;
+                if (provData.email) info.email = provData.email;
+                if (provData.accountId) info.accountId = provData.accountId;
+                if (provData.activeRemoteId) info.remoteId = String(provData.activeRemoteId);
+                if (provData.language) info.locale = provData.language;
+            } catch {
+                // Provision info not available
+            }
         }
 
-        // Get full discovery info via HTTP POST (as the Harmony app does)
-        try {
-            const raw = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {}) as Record<string, unknown>;
-            this.adapter.log.debug(`Discovery info raw: ${JSON.stringify(raw)}`);
-            // HTTP response may wrap data in a 'data' field
-            const data = (raw?.data ?? raw) as Record<string, unknown>;
-            // Merge hub IP since discovery may not include it
-            if (!data.ip) data.ip = hub.ip || '';
-            return { success: true, data };
-        } catch {
-            // Fallback to basic stored info
-            return {
-                success: true,
-                data: {
-                    friendlyName: hub.friendlyName || msg.hubName,
-                    ip: hub.ip || '',
-                },
-            };
-        }
+        return { success: true, data: info };
     }
 
     private async searchIRDB(msg: { query: string }): Promise<MessageResponse> {
@@ -363,8 +355,12 @@ export class MessageHandler {
     private async checkFirmware(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
         try {
-            const result = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {});
-            return { success: true, data: result };
+            const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {}) as Record<string, unknown>;
+            // code 417 = not authenticated/paired, not a real firmware response
+            if (raw?.code === '417' || raw?.code === 417) {
+                return { success: true, data: { requiresPairing: true, message: 'Firmware check requires hub pairing (HTTP 417)' } };
+            }
+            return { success: true, data: raw?.data ?? raw };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };

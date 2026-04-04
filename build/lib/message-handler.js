@@ -172,37 +172,30 @@ class MessageHandler {
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
         const hub = this.adapter.hubs[msg.hubName];
-        if (!(hub === null || hub === void 0 ? void 0 : hub.client)) {
-            // Return basic info from stored data if client not available
-            return {
-                success: true,
-                data: {
-                    friendlyName: (hub === null || hub === void 0 ? void 0 : hub.friendlyName) || msg.hubName,
-                    ip: (hub === null || hub === void 0 ? void 0 : hub.ip) || '',
-                },
-            };
+        // Build combined info from all available sources
+        const info = {
+            friendlyName: (hub === null || hub === void 0 ? void 0 : hub.friendlyName) || msg.hubName,
+            ip: (hub === null || hub === void 0 ? void 0 : hub.ip) || '',
+        };
+        // Get account/provision info via HTTP POST (works without pairing, code 200)
+        if (hub === null || hub === void 0 ? void 0 : hub.ip) {
+            try {
+                const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.account?getProvisionInfo', {});
+                const provData = ((_a = raw === null || raw === void 0 ? void 0 : raw.data) !== null && _a !== void 0 ? _a : raw);
+                if (provData.email)
+                    info.email = provData.email;
+                if (provData.accountId)
+                    info.accountId = provData.accountId;
+                if (provData.activeRemoteId)
+                    info.remoteId = String(provData.activeRemoteId);
+                if (provData.language)
+                    info.locale = provData.language;
+            }
+            catch {
+                // Provision info not available
+            }
         }
-        // Get full discovery info via HTTP POST (as the Harmony app does)
-        try {
-            const raw = await this.writer.sendHttpPost(msg.hubName, 'connect.discoveryinfo?get', {});
-            this.adapter.log.debug(`Discovery info raw: ${JSON.stringify(raw)}`);
-            // HTTP response may wrap data in a 'data' field
-            const data = ((_a = raw === null || raw === void 0 ? void 0 : raw.data) !== null && _a !== void 0 ? _a : raw);
-            // Merge hub IP since discovery may not include it
-            if (!data.ip)
-                data.ip = hub.ip || '';
-            return { success: true, data };
-        }
-        catch {
-            // Fallback to basic stored info
-            return {
-                success: true,
-                data: {
-                    friendlyName: hub.friendlyName || msg.hubName,
-                    ip: hub.ip || '',
-                },
-            };
-        }
+        return { success: true, data: info };
     }
     async searchIRDB(msg) {
         if (!(msg === null || msg === void 0 ? void 0 : msg.query))
@@ -339,11 +332,16 @@ class MessageHandler {
         }
     }
     async checkFirmware(msg) {
+        var _a;
         if (!(msg === null || msg === void 0 ? void 0 : msg.hubName))
             return { success: false, error: 'hubName required' };
         try {
-            const result = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {});
-            return { success: true, data: result };
+            const raw = await this.writer.sendHttpPost(msg.hubName, 'setup.firmware?check', {});
+            // code 417 = not authenticated/paired, not a real firmware response
+            if ((raw === null || raw === void 0 ? void 0 : raw.code) === '417' || (raw === null || raw === void 0 ? void 0 : raw.code) === 417) {
+                return { success: true, data: { requiresPairing: true, message: 'Firmware check requires hub pairing (HTTP 417)' } };
+            }
+            return { success: true, data: (_a = raw === null || raw === void 0 ? void 0 : raw.data) !== null && _a !== void 0 ? _a : raw };
         }
         catch (e) {
             const errMsg = e instanceof Error ? e.message : String(e);
