@@ -17,6 +17,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import BoltIcon from '@mui/icons-material/Bolt';
 import TimerIcon from '@mui/icons-material/Timer';
 import { I18n } from '@iobroker/adapter-react-v5';
@@ -29,9 +30,10 @@ interface SequenceEditorProps {
     sequence: HarmonySequence;
     allDevices: HarmonyDevice[];
     onUpdate: (updated: HarmonySequence) => void;
+    onRunSequence?: (actions: Array<{ deviceId: string; command: string; duration: number; delay: number }>) => Promise<void>;
 }
 
-export function SequenceEditor({ sequence, allDevices, onUpdate }: SequenceEditorProps): React.JSX.Element {
+export function SequenceEditor({ sequence, allDevices, onUpdate, onRunSequence }: SequenceEditorProps): React.JSX.Element {
     const [editingName, setEditingName] = useState(false);
     const [nameValue, setNameValue] = useState(sequence.name);
 
@@ -135,6 +137,17 @@ export function SequenceEditor({ sequence, allDevices, onUpdate }: SequenceEdito
                     <>
                         <Typography variant="h6">{sequence.name}</Typography>
                         <Button size="small" onClick={(): void => setEditingName(true)}>{I18n.t('edit')}</Button>
+                        {onRunSequence && actions.length > 0 && (
+                            <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                startIcon={<PlayArrowIcon />}
+                                onClick={(): void => { void onRunSequence(actions); }}
+                            >
+                                {I18n.t('test')}
+                            </Button>
+                        )}
                     </>
                 )}
             </Box>

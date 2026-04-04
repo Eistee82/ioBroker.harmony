@@ -15,6 +15,7 @@ import RouterIcon from '@mui/icons-material/Router';
 import DevicesIcon from '@mui/icons-material/Devices';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import SettingsIcon from '@mui/icons-material/Settings';
+import HomeIcon from '@mui/icons-material/Home';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import { I18n } from '@iobroker/adapter-react-v5';
@@ -31,7 +32,8 @@ export type TreeSelection =
     | { type: 'deviceList'; hubName: string }
     | { type: 'device'; hubName: string; deviceId: string }
     | { type: 'sequenceList'; hubName: string }
-    | { type: 'sequence'; hubName: string; sequenceId: number };
+    | { type: 'sequence'; hubName: string; sequenceId: number }
+    | { type: 'automation'; hubName: string };
 
 interface TreeNavProps {
     hubs: Array<{ name: string; friendlyName: string; connected: boolean; config: HarmonyConfig | null }>;
@@ -216,6 +218,21 @@ export function TreeNav({ hubs, selection, onSelect }: TreeNavProps): React.JSX.
                                     </ListItemIcon>
                                     <ListItemText
                                         primary={I18n.t('settings')}
+                                        primaryTypographyProps={{ fontWeight: 500, fontSize: 13 }}
+                                    />
+                                </ListItemButton>
+
+                                {/* Home Automation */}
+                                <ListItemButton
+                                    selected={isSelected(selection, { type: 'automation', hubName: hub.name })}
+                                    onClick={(): void => onSelect({ type: 'automation', hubName: hub.name })}
+                                    sx={{ pl: 4 }}
+                                >
+                                    <ListItemIcon sx={{ minWidth: 28 }}>
+                                        <HomeIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary={I18n.t('homeAutomation')}
                                         primaryTypographyProps={{ fontWeight: 500, fontSize: 13 }}
                                     />
                                 </ListItemButton>

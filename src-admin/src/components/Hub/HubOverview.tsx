@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     Card,
@@ -11,6 +11,7 @@ import {
     TableCell,
     Button,
     Divider,
+    TextField,
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -34,6 +35,7 @@ export interface HubOverviewProps {
     onImport?: () => void;
     onSync?: () => void;
     onRefresh?: () => void;
+    sendCommand?: <T>(command: string, payload?: unknown) => Promise<{ success: boolean; data?: T; error?: string }>;
 }
 
 const HUB_TYPE_LABELS: Record<string, string> = {
@@ -94,7 +96,24 @@ export function HubOverview({
     onImport,
     onSync,
     onRefresh,
+    sendCommand,
 }: HubOverviewProps): React.JSX.Element {
+    const [channelInput, setChannelInput] = useState('');
+    const [firmwareInfo, setFirmwareInfo] = useState<string | null>(null);
+    const [sysInfo, setSysInfo] = useState<Record<string, unknown> | null>(null);
+    const [capabilities, setCapabilities] = useState<Record<string, unknown> | null>(null);
+
+    useEffect(() => {
+        if (!sendCommand) return;
+        void sendCommand<Record<string, unknown>>('getSysInfo', { hubName }).then((resp) => {
+            if (resp.success && resp.data) setSysInfo(resp.data);
+        });
+        void sendCommand<Record<string, unknown>>('getCapabilities', { hubName }).then((resp) => {
+            if (resp.success && resp.data) setCapabilities(resp.data);
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hubName, sendCommand]);
+
     const activities = config?.activity?.filter((a) => a.id !== '-1') || [];
     const devices = config?.device || [];
     const totalCommands = devices.reduce(
@@ -179,6 +198,9 @@ export function HubOverview({
                             </Typography>
                         ))}
                         {kvRow('Product ID', productId)}
+                        {sysInfo && Object.entries(sysInfo).map(([key, val]) =>
+                            kvRow(key, String(val ?? '-')),
+                        )}
                     </SectionCard>
                 </Grid2>
 
@@ -244,6 +266,10 @@ export function HubOverview({
                                 />
                                 : '-'
                         ))}
+                        {capabilities && typeof capabilities.MaxDevices !== 'undefined' &&
+                            kvRow(I18n.t('maxDevices'), String(capabilities.MaxDevices))}
+                        {capabilities && typeof capabilities.MaxActivities !== 'undefined' &&
+                            kvRow(I18n.t('maxActivities'), String(capabilities.MaxActivities))}
                     </SectionCard>
                 </Grid2>
 
@@ -295,6 +321,56 @@ export function HubOverview({
                                     >
                                         {I18n.t('refresh')}
                                     </Button>
+                                )}
+                                {sendCommand && (
+                                    <>
+                                        <Divider />
+                                        <Typography variant="subtitle2" fontWeight={600}>
+                                            Quick Actions
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                            <TextField
+                                                size="small"
+                                                label={I18n.t('channelNumber')}
+                                                value={channelInput}
+                                                onChange={(e): void => setChannelInput(e.target.value)}
+                                                sx={{ flex: 1 }}
+                                            />
+                                            <Button
+                                                variant="contained"
+                                                size="small"
+                                                onClick={(): void => {
+                                                    void sendCommand('changeChannel', { hubName, channel: channelInput });
+                                                }}
+                                                disabled={!channelInput}
+                                            >
+                                                {I18n.t('go')}
+                                            </Button>
+                                        </Box>
+                                        <Button
+                                            variant="outlined"
+                                            fullWidth
+                                            onClick={async (): Promise<void> => {
+                                                const resp = await sendCommand<{ upToDate?: boolean }>('checkFirmware', { hubName });
+                                                if (resp.success && resp.data) {
+                                                    setFirmwareInfo(
+                                                        resp.data.upToDate
+                                                            ? I18n.t('firmwareUpToDate')
+                                                            : I18n.t('firmwareAvailable'),
+                                                    );
+                                                } else {
+                                                    setFirmwareInfo(resp.error || 'Unknown error');
+                                                }
+                                            }}
+                                        >
+                                            {I18n.t('checkFirmware')}
+                                        </Button>
+                                        {firmwareInfo && (
+                                            <Typography variant="body2" color="text.secondary">
+                                                {firmwareInfo}
+                                            </Typography>
+                                        )}
+                                    </>
                                 )}
                             </Box>
                         </CardContent>

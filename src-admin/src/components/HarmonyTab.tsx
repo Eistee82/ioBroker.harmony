@@ -21,6 +21,7 @@ import { DeviceEditor } from './Device/DeviceEditor';
 import { SequenceList } from './Sequence/SequenceList';
 import { SequenceEditor } from './Sequence/SequenceEditor';
 import { HubSettings } from './Hub/HubSettings';
+import { AutomationPanel } from './Automation/AutomationPanel';
 import { ConfigToolbar } from './Config/ConfigToolbar';
 import { UnsavedBanner } from './Config/UnsavedBanner';
 import { exportConfig, triggerImport } from './Config/ExportImport';
@@ -51,6 +52,7 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeHub, setActiveHub] = useState<string | null>(null);
+    const [currentActivityId, setCurrentActivityId] = useState<string>('-1');
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false, message: '', severity: 'success',
     });
@@ -90,6 +92,8 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                     const stateResp = await sendCommand<Record<string, unknown>>('getStateDigest', { hubName: hub.name });
                     if (stateResp.success && stateResp.data) {
                         setStateDigests((prev) => ({ ...prev, [hub.name]: stateResp.data as Record<string, unknown> }));
+                        const actId = (stateResp.data as Record<string, unknown>).activityId;
+                        if (typeof actId === 'string') setCurrentActivityId(actId);
                     }
                 }
 
@@ -290,6 +294,28 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
         setSnackbar({ open: true, message: 'Activity creation wizard coming soon - use Harmony app to create activities for now', severity: 'info' as 'success' });
     }, []);
 
+    const handleStartActivity = useCallback(async (activityId: string): Promise<void> => {
+        if (!activeHub) return;
+        const resp = await sendCommand<unknown>('startActivity', { hubName: activeHub, activityId });
+        if (resp.success) {
+            setCurrentActivityId(activityId);
+            setSnackbar({ open: true, message: 'Activity started', severity: 'success' });
+        } else {
+            setSnackbar({ open: true, message: 'Start failed: ' + (resp.error || ''), severity: 'error' });
+        }
+    }, [activeHub, sendCommand]);
+
+    const handleStopAll = useCallback(async (): Promise<void> => {
+        if (!activeHub) return;
+        const resp = await sendCommand<unknown>('startActivity', { hubName: activeHub, activityId: '-1' });
+        if (resp.success) {
+            setCurrentActivityId('-1');
+            setSnackbar({ open: true, message: 'All activities stopped', severity: 'success' });
+        } else {
+            setSnackbar({ open: true, message: 'Stop failed: ' + (resp.error || ''), severity: 'error' });
+        }
+    }, [activeHub, sendCommand]);
+
     const handleDeleteActivity = useCallback(async (activityId: string): Promise<void> => {
         if (!activeHub) return;
         const resp = await sendCommand<unknown>('deleteActivity', { hubName: activeHub, activityId });
@@ -303,6 +329,16 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
             setSnackbar({ open: true, message: 'Delete failed: ' + (resp.error || ''), severity: 'error' });
         }
     }, [activeHub, sendCommand, configState]);
+
+    const handleRunSequence = useCallback(async (actions: Array<{ deviceId: string; command: string; duration: number; delay: number }>): Promise<void> => {
+        if (!activeHub) return;
+        const resp = await sendCommand<unknown>('runSequence', { hubName: activeHub, actions });
+        if (resp.success) {
+            setSnackbar({ open: true, message: 'Sequence executed', severity: 'success' });
+        } else {
+            setSnackbar({ open: true, message: 'Sequence failed: ' + (resp.error || ''), severity: 'error' });
+        }
+    }, [activeHub, sendCommand]);
 
     const handleTestCommand = useCallback(async (hubNameArg: string, deviceId: string, command: string): Promise<{ success: boolean }> => {
         const resp = await sendCommand<unknown>('testCommand', { hubName: hubNameArg, deviceId, command });
@@ -336,6 +372,7 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         onImport={handleImport}
                         onSync={handleSync}
                         onRefresh={handleRefresh}
+                        sendCommand={sendCommand}
                     />
                 );
 
@@ -349,6 +386,9 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         }}
                         onAddActivity={handleAddActivity}
                         onDeleteActivity={handleDeleteActivity}
+                        onStartActivity={handleStartActivity}
+                        onStopAll={handleStopAll}
+                        currentActivityId={currentActivityId}
                     />
                 );
 
@@ -416,9 +456,18 @@ export default function HarmonyTab({ socket, themeType, theme, adapterName, inst
                         sequence={seq}
                         allDevices={config?.device || []}
                         onUpdate={handleSequenceUpdate}
+                        onRunSequence={handleRunSequence}
                     />
                 );
             }
+
+            case 'automation':
+                return (
+                    <AutomationPanel
+                        hubName={selection.hubName}
+                        sendCommand={sendCommand}
+                    />
+                );
 
             case 'hubSettings':
                 return (

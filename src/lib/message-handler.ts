@@ -87,6 +87,36 @@ export class MessageHandler {
                         (obj.message as { hubName: string }).hubName,
                     );
                     break;
+                case 'startActivity':
+                    response = await this.startActivity(obj.message as { hubName: string; activityId: string });
+                    break;
+                case 'getCurrentActivity':
+                    response = await this.getCurrentActivity(obj.message as { hubName: string });
+                    break;
+                case 'changeChannel':
+                    response = await this.changeChannel(obj.message as { hubName: string; channel: string });
+                    break;
+                case 'checkFirmware':
+                    response = await this.checkFirmware(obj.message as { hubName: string });
+                    break;
+                case 'getSysInfo':
+                    response = await this.getSysInfo(obj.message as { hubName: string });
+                    break;
+                case 'getProvisionInfo':
+                    response = await this.getProvisionInfo(obj.message as { hubName: string });
+                    break;
+                case 'getCapabilities':
+                    response = await this.getCapabilities(obj.message as { hubName: string });
+                    break;
+                case 'getAutomationState':
+                    response = await this.getAutomationState(obj.message as { hubName: string });
+                    break;
+                case 'setAutomationState':
+                    response = await this.setAutomationState(obj.message as { hubName: string; deviceId: string; state: Record<string, unknown> });
+                    break;
+                case 'runSequence':
+                    response = await this.runSequence(obj.message as { hubName: string; actions: Array<{ deviceId: string; command: string; duration: number; delay: number }> });
+                    break;
                 case 'searchIRDB':
                     response = await this.searchIRDB(obj.message as { query: string });
                     break;
@@ -275,6 +305,143 @@ export class MessageHandler {
         try {
             hub.client.requestKeyPress(action, 'press', 100);
             return { success: true, data: { sent: true } };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async startActivity(msg: { hubName: string; activityId: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        const hub = this.adapter.hubs[msg.hubName];
+        if (!hub?.client) return { success: false, error: `Hub not found: ${msg.hubName}` };
+
+        try {
+            hub.client.requestActivityChange(msg.activityId || '-1');
+            return { success: true, data: { started: true } };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async getCurrentActivity(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName,
+                'vnd.logitech.harmony/vnd.logitech.harmony.engine?getCurrentActivity',
+                { verb: 'get' });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async changeChannel(msg: { hubName: string; channel: string }): Promise<MessageResponse> {
+        if (!msg?.hubName || !msg?.channel) return { success: false, error: 'hubName and channel required' };
+        try {
+            await this.writer.sendHubQuery(msg.hubName, 'harmony.engine?changeChannel', {
+                timestamp: 0,
+                channel: msg.channel,
+            });
+            return { success: true, data: { changed: true } };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async checkFirmware(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'setup.firmware?check', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async getSysInfo(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.sysinfo?get', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async getProvisionInfo(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'setup.account?getProvisionInfo', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async getCapabilities(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'proxy.resource?get', {
+                uri: `harmony://Account/0/CapabilityList`,
+            });
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async getAutomationState(msg: { hubName: string }): Promise<MessageResponse> {
+        if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        try {
+            const result = await this.writer.sendHubQuery(msg.hubName, 'harmony.automation?getstate', {});
+            return { success: true, data: result };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async setAutomationState(msg: { hubName: string; deviceId: string; state: Record<string, unknown> }): Promise<MessageResponse> {
+        if (!msg?.hubName || !msg?.deviceId) return { success: false, error: 'hubName and deviceId required' };
+        try {
+            await this.writer.sendHubQuery(msg.hubName, 'harmony.automation?setstate', {
+                state: { [msg.deviceId]: msg.state },
+            });
+            return { success: true, data: { set: true } };
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { success: false, error: errMsg };
+        }
+    }
+
+    private async runSequence(msg: { hubName: string; actions: Array<{ deviceId: string; command: string; duration: number; delay: number }> }): Promise<MessageResponse> {
+        if (!msg?.hubName || !msg?.actions?.length) return { success: false, error: 'hubName and actions required' };
+        const hub = this.adapter.hubs[msg.hubName];
+        if (!hub?.client) return { success: false, error: `Hub not found: ${msg.hubName}` };
+
+        try {
+            for (const action of msg.actions) {
+                if (action.delay > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, action.delay));
+                }
+                if (action.command && action.deviceId) {
+                    const actionJson = JSON.stringify({
+                        command: action.command,
+                        type: 'IRCommand',
+                        deviceId: action.deviceId,
+                    });
+                    hub.client.requestKeyPress(actionJson, 'press', action.duration || 100);
+                }
+            }
+            return { success: true, data: { executed: true, steps: msg.actions.length } };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };

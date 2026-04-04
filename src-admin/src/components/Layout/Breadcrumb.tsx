@@ -47,6 +47,9 @@ export function Breadcrumb({ selection, hubConfigs }: BreadcrumbProps): React.JS
         case 'hubSettings':
             parts.push(I18n.t('settings'));
             break;
+        case 'automation':
+            parts.push(I18n.t('homeAutomation'));
+            break;
     }
 
     return (

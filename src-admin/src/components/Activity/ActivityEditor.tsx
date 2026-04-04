@@ -195,6 +195,30 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, se
                         slotProps={{ input: { readOnly: true } }}
                     />
                 </Grid2>
+                <Grid2 size={{ xs: 6, sm: 3 }}>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={!!activity.isTuningDefault}
+                                onChange={(e): void => handleField('isTuningDefault', e.target.checked)}
+                                size="small"
+                            />
+                        }
+                        label={<Typography variant="body2">{I18n.t('tuningDefault')}</Typography>}
+                    />
+                </Grid2>
+                <Grid2 size={{ xs: 6, sm: 3 }}>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={!!activity.isMultiZone}
+                                onChange={(e): void => handleField('isMultiZone', e.target.checked)}
+                                size="small"
+                            />
+                        }
+                        label={<Typography variant="body2">{I18n.t('multiZone')}</Typography>}
+                    />
+                </Grid2>
                 <IconPicker
                     open={iconPickerOpen}
                     value={activity.icon || ''}
@@ -532,14 +556,44 @@ export function ActivityEditor({ activity, allDevices, onUpdate, testCommand, se
                                         </Select>
                                     </Grid2>
                                     <Grid2 size={{ xs: 6, sm: 3 }}>
-                                        <TextField
-                                            value={rule.Input || ''}
-                                            onChange={(e): void => handleFixitChange(deviceId, 'Input', e.target.value)}
-                                            size="small"
-                                            placeholder={I18n.t('input')}
-                                            label={I18n.t('input')}
-                                            fullWidth
-                                        />
+                                        {(() => {
+                                            const inputCommands: string[] = [];
+                                            if (device) {
+                                                for (const cg of device.controlGroup || []) {
+                                                    if (cg.name === 'InputPicker' || cg.name === 'Input' || cg.name.toLowerCase().includes('input')) {
+                                                        for (const fn of cg.function) {
+                                                            inputCommands.push(fn.name);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            return inputCommands.length > 0 ? (
+                                                <Select
+                                                    value={rule.Input || ''}
+                                                    onChange={(e): void => handleFixitChange(deviceId, 'Input', e.target.value)}
+                                                    size="small"
+                                                    fullWidth
+                                                    displayEmpty
+                                                >
+                                                    <MenuItem value=""><em>{I18n.t('noInput')}</em></MenuItem>
+                                                    {inputCommands.map((cmd) => (
+                                                        <MenuItem key={cmd} value={cmd}>{cmd}</MenuItem>
+                                                    ))}
+                                                    {rule.Input && !inputCommands.includes(rule.Input) && (
+                                                        <MenuItem value={rule.Input}>{rule.Input}</MenuItem>
+                                                    )}
+                                                </Select>
+                                            ) : (
+                                                <TextField
+                                                    value={rule.Input || ''}
+                                                    onChange={(e): void => handleFixitChange(deviceId, 'Input', e.target.value)}
+                                                    size="small"
+                                                    placeholder={I18n.t('input')}
+                                                    label={I18n.t('input')}
+                                                    fullWidth
+                                                />
+                                            );
+                                        })()}
                                     </Grid2>
                                     <Grid2 size={{ xs: 6, sm: 3 }}>
                                         <FormControlLabel

@@ -21,6 +21,8 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
 import { I18n } from '@iobroker/adapter-react-v5';
 import type { HarmonyActivity } from '../../types/harmony';
 import { getActivityIconSrc, getActivityTypeLabel } from '../../utils/activityTypes';
@@ -32,9 +34,12 @@ interface ActivityListProps {
     onReorder?: (activities: HarmonyActivity[]) => void;
     onAddActivity?: () => void;
     onDeleteActivity?: (id: string) => void;
+    onStartActivity?: (activityId: string) => void;
+    onStopAll?: () => void;
+    currentActivityId?: string;
 }
 
-export function ActivityList({ activities, onSelectActivity, onReorder, onAddActivity, onDeleteActivity }: ActivityListProps): React.JSX.Element {
+export function ActivityList({ activities, onSelectActivity, onReorder, onAddActivity, onDeleteActivity, onStartActivity, onStopAll, currentActivityId }: ActivityListProps): React.JSX.Element {
     const [confirmDelete, setConfirmDelete] = React.useState<{ id: string; label: string } | null>(null);
     const sorted = [...activities]
         .filter((a) => a.id !== '-1')
@@ -62,11 +67,18 @@ export function ActivityList({ activities, onSelectActivity, onReorder, onAddAct
                 <Typography variant="h6">
                     {I18n.t('activities')} ({sorted.length})
                 </Typography>
-                {onAddActivity && (
-                    <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onAddActivity}>
-                        {I18n.t('addActivity')}
-                    </Button>
-                )}
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {onStopAll && (
+                        <Button size="small" variant="outlined" color="error" startIcon={<StopIcon />} onClick={onStopAll}>
+                            {I18n.t('stopAll')}
+                        </Button>
+                    )}
+                    {onAddActivity && (
+                        <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={onAddActivity}>
+                            {I18n.t('addActivity')}
+                        </Button>
+                    )}
+                </Box>
             </Box>
             {sorted.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
@@ -83,7 +95,7 @@ export function ActivityList({ activities, onSelectActivity, onReorder, onAddAct
                                 <TableCell>{I18n.t('type')}</TableCell>
                                 <TableCell align="right">{I18n.t('devices')}</TableCell>
                                 <TableCell align="right">#</TableCell>
-                                {onDeleteActivity && <TableCell width={50} />}
+                                {(onStartActivity || onDeleteActivity) && <TableCell width={100} />}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -93,7 +105,10 @@ export function ActivityList({ activities, onSelectActivity, onReorder, onAddAct
                                     <TableRow
                                         key={act.id}
                                         hover
-                                        sx={{ cursor: 'pointer' }}
+                                        sx={{
+                                            cursor: 'pointer',
+                                            ...(act.id === currentActivityId ? { backgroundColor: 'rgba(76, 175, 80, 0.08)' } : {}),
+                                        }}
                                         onClick={(): void => onSelectActivity(act.id)}
                                     >
                                         <TableCell
@@ -138,17 +153,42 @@ export function ActivityList({ activities, onSelectActivity, onReorder, onAddAct
                                         </TableCell>
                                         <TableCell align="right">{deviceCount}</TableCell>
                                         <TableCell align="right">{act.activityOrder}</TableCell>
-                                        {onDeleteActivity && (
-                                            <TableCell align="right" onClick={(e): void => e.stopPropagation()}>
-                                                <Tooltip title={I18n.t('delete')}>
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        onClick={(): void => setConfirmDelete({ id: act.id, label: act.label })}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
+                                        {(onStartActivity || onDeleteActivity) && (
+                                            <TableCell align="right" onClick={(e): void => e.stopPropagation()} sx={{ whiteSpace: 'nowrap' }}>
+                                                {onStartActivity && (
+                                                    act.id === currentActivityId ? (
+                                                        <Tooltip title={I18n.t('stopAllActivities')}>
+                                                            <IconButton
+                                                                size="small"
+                                                                sx={{ color: 'success.main' }}
+                                                                onClick={(): void => onStopAll?.()}
+                                                            >
+                                                                <StopIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        <Tooltip title={I18n.t('startActivity')}>
+                                                            <IconButton
+                                                                size="small"
+                                                                color="primary"
+                                                                onClick={(): void => onStartActivity(act.id)}
+                                                            >
+                                                                <PlayArrowIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )
+                                                )}
+                                                {onDeleteActivity && (
+                                                    <Tooltip title={I18n.t('delete')}>
+                                                        <IconButton
+                                                            size="small"
+                                                            color="error"
+                                                            onClick={(): void => setConfirmDelete({ id: act.id, label: act.label })}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
                                             </TableCell>
                                         )}
                                     </TableRow>
