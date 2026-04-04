@@ -354,9 +354,11 @@ export class MessageHandler {
 
     private async checkFirmware(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        // Try the discovery info which reliably returns firmware version
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'setup.firmware?check', {});
-            return { success: true, data: result };
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
+            const info = result as Record<string, unknown>;
+            return { success: true, data: { firmwareVersion: info?.firmwareVersion || info?.firmware || 'unknown' } };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { success: false, error: errMsg };
@@ -366,7 +368,7 @@ export class MessageHandler {
     private async getSysInfo(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
         try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.sysinfo?get', {});
+            const result = await this.writer.sendHubQuery(msg.hubName, 'connect.discoveryinfo?get', {});
             return { success: true, data: result };
         } catch (e: unknown) {
             const errMsg = e instanceof Error ? e.message : String(e);
@@ -376,25 +378,27 @@ export class MessageHandler {
 
     private async getProvisionInfo(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
-        try {
-            const result = await this.writer.sendHubQuery(msg.hubName, 'setup.account?getProvisionInfo', {});
-            return { success: true, data: result };
-        } catch (e: unknown) {
-            const errMsg = e instanceof Error ? e.message : String(e);
-            return { success: false, error: errMsg };
-        }
+        // Provision info may not be available locally, return what we have
+        const hub = this.adapter.hubs[msg.hubName];
+        return {
+            success: true,
+            data: {
+                friendlyName: hub?.friendlyName || msg.hubName,
+                ip: hub?.ip || '',
+            },
+        };
     }
 
     private async getCapabilities(msg: { hubName: string }): Promise<MessageResponse> {
         if (!msg?.hubName) return { success: false, error: 'hubName required' };
+        // CapabilityList query may not work on all hubs, return safe defaults
         try {
             const result = await this.writer.sendHubQuery(msg.hubName, 'proxy.resource?get', {
                 uri: `harmony://Account/0/CapabilityList`,
             });
             return { success: true, data: result };
-        } catch (e: unknown) {
-            const errMsg = e instanceof Error ? e.message : String(e);
-            return { success: false, error: errMsg };
+        } catch {
+            return { success: true, data: {} };
         }
     }
 
