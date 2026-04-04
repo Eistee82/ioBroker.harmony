@@ -1,12 +1,8 @@
 {
   "common": {
     "name": "harmony",
-    "version": "2.1.0",
+    "version": "2.0.5",
     "news": {
-      "2.1.0": {
-        "en": "Config UI: activity start/stop, sequences, hub settings, smart home, firmware check, device/activity add/delete",
-        "de": "Config UI: Aktivitäten starten/stoppen, Sequenzen, Hub-Einstellungen, Smart Home, Firmware-Check, Geräte/Aktivitäten hinzufügen/löschen"
-      },
       "2.0.5": {
         "en": "Corrected the type of value",
         "de": "Korrektur der Art des Wertes",
